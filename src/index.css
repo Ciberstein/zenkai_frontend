@@ -1,0 +1,307 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Night City ──────────────────────────────────────────────────────────────
+   Negro azulado de pantalla apagada, texto frio y un solo color de energia: el
+   amarillo "volt" de la cartelera corporativa. El cian solo existe para datos
+   (puntuaciones, cifras), como en un HUD: asi el amarillo siempre significa
+   "esto se puede pulsar". */
+@theme {
+  --color-ink-950: #05060b;
+  --color-ink-900: #0a0c14;
+  --color-ink-800: #11141f;
+  --color-ink-700: #1a1e2e;
+
+  --color-volt-300: #fff56b;
+  --color-volt-400: #fcee0a;
+  --color-volt-500: #e6d800;
+
+  --font-sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Chakra Petch", "Barlow", system-ui, sans-serif;
+  --font-mono: "Share Tech Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-jp: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --animate-fade-up: fade-up 0.6s var(--ease-out-expo) both;
+  --animate-fade-in: fade-in 0.5s ease-out both;
+  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
+  --animate-marquee-up: marquee-up 70s linear infinite;
+  --animate-marquee-down: marquee-down 80s linear infinite;
+  --animate-glitch: glitch 0.45s steps(2, end) both;
+}
+
+/* Tokens semanticos: los componentes solo hablan con estos, y el tema los
+   intercambia sin repartir `dark:` por todas las pantallas.
+   `accent` es el relleno; `accent-text` es el amarillo cuando hace de TEXTO: en
+   claro un amarillo sobre papel no se lee, asi que ahi pasa a una tinta oliva.
+   `accent-fg` es lo que se escribe encima del relleno: siempre negro. */
+:root {
+  --bg: #f1efe4;
+  --surface: #fbfaf4;
+  --surface-2: #e7e4d4;
+  --fg: #0a0b10;
+  --fg-muted: #5c5e6c;
+  --line: #d3cfbb;
+  --accent: #fcee0a;
+  --accent-fg: #07070a;
+  --accent-text: #6f6500;
+  --data: #007b94;
+  --nav-h: 4.25rem;
+  --shadow-card: 0 18px 40px -18px rgb(20 10 30 / 0.35);
+}
+
+.dark {
+  --bg: #05060b;
+  --surface: #0a0c14;
+  --surface-2: #11141f;
+  --fg: #eef1ff;
+  --fg-muted: #8b92ab;
+  --line: #1c2030;
+  --accent: #fcee0a;
+  --accent-fg: #07070a;
+  --accent-text: #fcee0a;
+  --data: #19e3ff;
+  --shadow-card: 0 24px 50px -20px rgb(0 0 0 / 0.9);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+  --color-data: var(--data);
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+@keyframes marquee-up {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+@keyframes marquee-down {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes hero-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Interferencia de canal: dos copias desplazadas en amarillo y cian. */
+@keyframes glitch {
+  0%   { text-shadow: 2px 0 var(--accent), -2px 0 var(--data); transform: translateX(0); }
+  25%  { text-shadow: -3px 0 var(--accent), 3px 0 var(--data); transform: translateX(-1px); }
+  50%  { text-shadow: 3px 0 var(--data), -2px 0 var(--accent); transform: translateX(1px); }
+  75%  { text-shadow: -2px 0 var(--accent), 2px 0 var(--data); transform: translateX(0); }
+  100% { text-shadow: none; transform: none; }
+}
+
+/* ─── Formas ──────────────────────────────────────────────────────────────────
+   Esquinas cortadas en diagonal (arriba-izquierda y abajo-derecha) en lugar de
+   redondeadas. Se hacen con clip-path, asi que recortan tambien sombras y
+   anillos externos: lo que lleve `cut` usa anillos `inset` y no sombras. */
+@utility cut-xs {
+  --c: 4px;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+
+@utility cut-sm {
+  --c: 8px;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+
+@utility cut {
+  --c: 12px;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+
+@utility cut-lg {
+  --c: 22px;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+
+/* Borde que SIGUE el corte. Un `ring` o un `border` son rectangulares y dejan la
+   diagonal sin linea; este se dibuja como un marco: el poligono recortado menos
+   el mismo poligono metido hacia dentro (`evenodd` hace el hueco). Va en un
+   pseudo-elemento, asi que el elemento tiene que estar posicionado (`relative`)
+   y haber definido su corte con `cut-*` (de ahi sale `--c`).
+     --ring-color  color de la linea (por defecto, el del texto)
+     --t           grosor (por defecto 1px)
+   Mover la diagonal hacia dentro un grosor `t` en perpendicular desplaza sus
+   extremos `t * (sqrt(2) - 1)` ~ 0.4142 t sobre los bordes rectos. */
+@utility cut-ring {
+  &::after {
+    --_t: var(--t, 1px);
+    --_c: var(--c, 12px);
+    --_k: calc(var(--_c) + var(--_t) * 0.4142);
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: var(--ring-color, currentColor);
+    clip-path: polygon(
+      evenodd,
+      var(--_c) 0, 100% 0, 100% calc(100% - var(--_c)), calc(100% - var(--_c)) 100%, 0 100%, 0 var(--_c),
+      var(--_c) 0,
+      var(--_k) var(--_t), calc(100% - var(--_t)) var(--_t),
+      calc(100% - var(--_t)) calc(100% - var(--_k)), calc(100% - var(--_k)) calc(100% - var(--_t)),
+      var(--_t) calc(100% - var(--_t)), var(--_t) var(--_k),
+      var(--_k) var(--_t)
+    );
+  }
+}
+
+/* Un elemento recortado no puede dibujar su propio foco por fuera. */
+@utility cut-focus {
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+}
+
+/* Marco de HUD para paneles con borde: dos esquinas en "L" amarillas, las
+   mismas que se cortan en las formas recortadas. */
+@utility hud {
+  position: relative;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    border: 0 solid var(--accent);
+  }
+
+  &::before {
+    top: -1px;
+    left: -1px;
+    border-top-width: 2px;
+    border-left-width: 2px;
+  }
+
+  &::after {
+    right: -1px;
+    bottom: -1px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+  }
+}
+
+/* Raya de peligro: la franja amarilla y negra de la cartelera. */
+@utility hazard {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--accent) 0 5px,
+    transparent 5px 10px
+  );
+}
+
+/* Etiqueta de HUD: monoespaciada, en mayusculas y con la raya delante. */
+@utility eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+
+  &::before {
+    content: "";
+    flex: none;
+    width: 22px;
+    height: 7px;
+    background-image: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px);
+  }
+}
+
+/* Velos sobre las portadas: sin ellos el texto encima de una imagen clara
+   deja de leerse. */
+@utility scrim {
+  background-image: linear-gradient(
+    to top,
+    var(--bg) 0%,
+    color-mix(in oklab, var(--bg) 88%, transparent) 18%,
+    color-mix(in oklab, var(--bg) 40%, transparent) 52%,
+    transparent 100%
+  );
+}
+
+@utility scrim-x {
+  background-image: linear-gradient(
+    to right,
+    var(--bg) 0%,
+    color-mix(in oklab, var(--bg) 82%, transparent) 38%,
+    transparent 78%
+  );
+}
+
+/* Superficie elevada estandar de tarjetas y paneles. */
+@utility panel {
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+
+/* Cristal: barra de navegacion y controles sobre imagen. */
+@utility glass {
+  background-color: color-mix(in oklab, var(--bg) 70%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+}
+
+/* Titular de seccion: grotesca tecnica en mayusculas. */
+@utility font-display-tight {
+  font-family: var(--font-display);
+  letter-spacing: 0.005em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* Rompe el ancho maximo de la pagina para que portadas y fondos lleguen de
+   borde a borde; el contenido de dentro se vuelve a alinear con `gutter`. */
+@utility bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+}
+
+/* Sube un bloque por debajo de la barra fija (altura + el aire superior del marco). */
+@utility pull-up {
+  margin-top: calc(-1 * (var(--nav-h) + 1.5rem));
+}
+
+/* Margen lateral comun de toda la web. */
+@utility gutter {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1500px;
+  padding-inline: 1rem;
+  @media (min-width: 640px) { padding-inline: 1.5rem; }
+  @media (min-width: 1024px) { padding-inline: 2.5rem; }
+}

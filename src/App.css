@@ -1,0 +1,154 @@
+html {
+  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+/* Lineas de barrido de pantalla CRT. Muy tenues y solo en oscuro: dan textura
+   de monitor sin restar legibilidad. No capturan el puntero. */
+.dark body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgb(0 0 0 / 0.16) 2px 3px
+  );
+  opacity: 0.5;
+}
+
+/* Titulares: grotesca tecnica en mayusculas, apretada. En @layer base para que
+   las utilidades (`normal-case`, `font-sans`, `tracking-*`) puedan anularlos. */
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1.04;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+}
+
+p { text-wrap: pretty; }
+
+img { -webkit-user-drag: none; }
+
+/* En @layer base para que las utilidades (focus-visible:outline-none) puedan
+   anularlo: el CSS sin capa siempre le gana a las utilidades de Tailwind. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Barra fina y recta: en una interfaz oscura la del sistema canta mucho. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border: 2px solid var(--bg);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Cifras alineadas en puntuaciones, tiempos y contadores. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Entrada escalonada de rejillas y filas. */
+.stagger > * {
+  animation: fade-up 0.6s var(--ease-out-expo) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+.stagger > *:nth-child(7) { animation-delay: 240ms; }
+.stagger > *:nth-child(8) { animation-delay: 280ms; }
+.stagger > *:nth-child(n+9) { animation-delay: 320ms; }
+
+/* Esqueletos: un barrido de luz, no un parpadeo. */
+.skeleton {
+  background-color: var(--surface-2);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, var(--accent) 9%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Numero de ranking: solo contorno, en amarillo apagado. */
+.rank-numeral {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 2px color-mix(in oklab, var(--accent) 55%, transparent);
+  paint-order: stroke fill;
+}
+
+/* Titulo en kanji en vertical: la firma del hero. */
+.vertical-jp {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--font-jp);
+  letter-spacing: 0.35em;
+}
+
+/* Cuadricula de plano tecnico: fondo del hero y del acceso. */
+.grid-hud {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--accent) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--accent) 7%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+}
+
+/* Mascara de bordes para filas con scroll: el contenido se desvanece al borde. */
+.edge-fade {
+  mask-image: linear-gradient(to right, transparent 0, #000 2rem, #000 calc(100% - 2rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 2rem, #000 calc(100% - 2rem), transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
