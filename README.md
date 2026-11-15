@@ -1,49 +1,121 @@
 # Zenkai — Frontend
 
-SPA de la plataforma de streaming de anime. React 19 + Vite, Redux Toolkit,
-Tailwind 4 y MUI, contra la API de `zenkai_backend`.
+Single-page app for the Zenkai anime streaming platform. React 19 + Vite 7,
+Redux Toolkit, Tailwind CSS 4 and Headless UI, talking to the `zenkai_backend`
+API.
 
-## Arranque
+The UI follows a cyberpunk design system ("Night City"): chamfered corners,
+a yellow accent, HUD details and light/dark themes. See
+[Design system](#design-system).
+
+## Getting started
 
 ```bash
 npm install
-cp .env.example .env   # VITE_API_URL apuntando al backend
+cp .env.example .env   # set VITE_API_URL to the backend URL
 npm run dev
 ```
 
-## Estructura
+| Script | Description |
+| --- | --- |
+| `npm run dev` | Vite dev server (exposed on the network) |
+| `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serve the build locally |
+| `npm run lint` | ESLint |
+| `npm start` | Serve `dist/` with `serve -s dist -l $PORT` (used on Railway) |
+
+## Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `VITE_API_URL` | **Public** URL of the backend (e.g. `http://localhost:3010`). It is baked in at build time, so it must exist before `npm run build`. The app runs in the user's browser, so a private network URL will not work |
+
+## Project structure
 
 ```
 index.html
 vite.config.js
-hooks/               Hooks reutilizables (debounce, scroll infinito, movil)
-i18n/                Configuracion de i18next + lang/{es,en,ja}.json
-public/              Estaticos servidos tal cual
+hooks/               Reusable hooks (debounce, infinite scroll, mobile)
+i18n/                i18next setup + lang/{es,en,ja}.json
+public/              Static files served as-is
 src/
-  main.jsx           Providers (redux, auth, admin) y montaje
-  App.jsx            Tema MUI + tabla de rutas
-  api/               Instancia de axios (refresh automatico) y prefijos
-  config/            Configuraciones sueltas de librerias
-  context/           Contextos globales: sesion y permisos de admin
-  routes/            Rutas protegidas (User, Private, Admin)
-  services/          Llamadas puntuales que no viven en el store
-  store/             configureStore + slices/ (uno por recurso)
-  utils/             Helpers puros
+  main.jsx           Providers (redux, auth, admin) and mounting
+  App.jsx            Route table
+  index.css          Design tokens and custom utilities
+  App.css            Base styles (typography, focus, scrollbars)
+  api/               Axios instance (automatic refresh) and prefixes
+  config/            Library configuration
+  context/           Global contexts: session and admin permissions
+  routes/            Protected routes (User, Watch, Private, Admin)
+  services/          One-off API calls that do not live in the store
+  store/             configureStore + slices/ (one per resource)
+  utils/             Pure helpers
   components/
-    layouts/         Marcos de pagina: User, Watch, Admin
-    shared/          Piezas transversales (Navbar, AnimeCard, Rail, ...)
-    pages/           Una carpeta por pagina con su XPage.jsx y partials/
-      index.jsx      Barril unico que consume App.jsx
+    layouts/         Page frames: User, Watch, Admin
+    material/        Base controls (Button, Tag, inputs)
+    shared/          Cross-cutting pieces (Navbar, AnimeCard, Rail, ...)
+    pages/           One folder per page with its XPage.jsx and partials/
+      index.jsx      Single barrel consumed by App.jsx
 ```
 
-Cada pagina sigue el mismo patron: `XPage.jsx` orquesta (thunks + estado) y
-los `partials/` solo pintan.
+Every page follows the same pattern: `XPage.jsx` orchestrates (thunks + state)
+and the `partials/` only render.
 
-## Notas
+## Routes
 
-- **Sesion por cookies httpOnly.** `src/api/axios.js` reintenta una vez tras
-  refrescar el token y encola las peticiones que caen durante ese refresco.
-- **Rutas publicas.** El catalogo se navega sin sesion (`Protected.User`);
-  solo biblioteca y ajustes exigen login (`Protected.Private`).
-- **Filtros en la URL.** Catalogo, busqueda y temporadas leen y escriben los
-  query params, asi cualquier vista es compartible.
+| Area | Routes | Access |
+| --- | --- | --- |
+| Auth | `/login` `/register` `/recovery` | public |
+| Browse | `/` `/catalog` `/search` `/seasons/:year?/:season?` `/schedule` `/anime/:malId` `/profile/:id?` | public |
+| Player | `/watch/:malId/:number` | public |
+| Library | `/watchlist` `/favorites` `/history` `/settings` | logged in |
+| Admin | `/admin` `/admin/catalog` `/admin/catalog/:id` `/admin/accounts` `/admin/jobs` `/admin/logs` `/admin/settings` | staff / admin |
+
+## Player and watch history
+
+The player uses a native `<video>` for `mp4` sources and an `<iframe>` for `embed`
+sources (`hls` is not supported yet). When the user is **logged in** it:
+
+- reports progress every 15 s, on pause and when the episode ends, ignoring
+  anything under 5 s of playback;
+- resumes where the user left off, unless the episode was already completed;
+- marks the episode as watched (the server flags it as completed at 85 %), which
+  shows a check in the episode list without reloading.
+
+Guests are never asked for or sent any history.
+
+## Design system
+
+Tokens live in `src/index.css` (`--bg`, `--surface`, `--fg`, `--accent`, ...) and
+switch with the `.dark` class on `<html>`.
+
+- **Fonts:** Barlow (body), Chakra Petch (headings), Share Tech Mono (labels),
+  Tektur (rank numerals), Zen Kaku Gothic New (Japanese).
+- **Shapes:** `cut-xs | cut-sm | cut | cut-lg` chamfer an element with `clip-path`.
+  Because the clip also hides borders and shadows, use `cut-ring` (needs `relative`
+  plus a `cut-*` class) for a border that follows the cut, and `cut-focus` for
+  focus rings.
+- **Details:** `hud` (corner brackets), `hazard` (stripe), `eyebrow` (small mono
+  label), `.grid-hud` and CRT scanlines in dark mode.
+
+Use canonical Tailwind 4 class names (`size-4.5`, `bg-linear-to-t`, `data-open:`).
+
+## Notes
+
+- **Cookie sessions.** `src/api/axios.js` retries once after refreshing the token
+  and queues the requests that fail during the refresh.
+- **Public catalog.** It can be browsed without a session (`Protected.User`); only
+  the library and settings require login (`Protected.Private`).
+- **Filters in the URL.** Catalog, search and seasons read and write query params,
+  so any view can be shared.
+- **i18n.** Spanish, English and Japanese through i18next; strings live in
+  `i18n/lang/`.
+
+## Deploying on Railway
+
+1. Set `VITE_API_URL` to the backend's public URL **before** the build runs.
+2. Build with `npm run build` and start with `npm start`; Railway provides `PORT`.
+3. Set the backend's `FRONTEND_DOMAIN` to this app's public URL so CORS allows it.
+4. Make sure every source folder is tracked by git. Case-insensitive file systems
+   can hide folders behind `.gitignore` patterns (a bare `logs` entry once kept
+   `src/components/pages/admin/Logs/` out of the repo and broke the Linux build).
