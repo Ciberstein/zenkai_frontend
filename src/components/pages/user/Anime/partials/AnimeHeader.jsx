@@ -122,7 +122,7 @@ const AnimeHeader = ({ anime, auth, tracked, favorited, firstEpisode, onTrack, o
                 as={Link}
                 to={`/watch/${anime.mal_id}/${firstEpisode.number}`}
                 size="xl"
-                color="light"
+                color="accent"
                 icon={<Icon name="play" className="size-5" />}
               >
                 {t('Watch now')}

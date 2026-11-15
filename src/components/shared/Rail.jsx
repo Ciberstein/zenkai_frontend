@@ -103,7 +103,14 @@ const Rail = ({ title, items = [], to = null, ranked = false, render = null, eye
               {ranked && (
                 <span
                   aria-hidden="true"
-                  className="rank-numeral pointer-events-none absolute -left-1 bottom-[3.4rem] select-none text-[8rem] md:text-[10.5rem]"
+                  className={clsx(
+                    'rank-numeral pointer-events-none absolute bottom-[3.4rem] select-none',
+                    // El 10 lleva dos cifras en el mismo hueco: mas pequeno y apretado
+                    // para que el poster no se coma el cero.
+                    index + 1 >= 10
+                      ? '-left-4 text-[5.5rem] tracking-[-0.1em] md:text-[7.5rem]'
+                      : '-left-1 text-[8rem] md:text-[10.5rem]',
+                  )}
                 >
                   {index + 1}
                 </span>

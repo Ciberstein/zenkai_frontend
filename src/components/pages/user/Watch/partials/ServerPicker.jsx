@@ -31,9 +31,9 @@ const ServerPicker = ({ sources = [], selected, onSelect }) => {
               onClick={() => onSelect(source)}
               aria-pressed={selected?.id === source.id}
               className={clsx(
-                'cursor-pointer px-4 py-1.5 text-xs font-semibold transition-[background-color,color,transform] duration-200 active:scale-95',
+                'cut-xs cursor-pointer px-4 py-1.5 text-xs font-semibold transition-[background-color,color,transform] duration-200 active:scale-95',
                 selected?.id === source.id
-                  ? 'bg-fg text-bg'
+                  ? 'bg-accent text-accent-fg'
                   : 'bg-surface-2 text-fg/80 hover:bg-line hover:text-fg',
               )}
             >

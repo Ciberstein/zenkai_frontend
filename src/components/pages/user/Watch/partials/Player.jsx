@@ -4,6 +4,10 @@ import Icon from '../../../../shared/Icon'
 
 const REPORT_EVERY_MS = 15000;
 
+// Menos de esto no cuenta como haber visto algo: evita crear una entrada de
+// historial (y un "continuar viendo" a 0:00) por solo abrir un episodio.
+const MIN_WATCHED_SECONDS = 5;
+
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 // Reproductor sobre la fuente elegida. Los enlaces "embed" van en un iframe:
@@ -14,11 +18,13 @@ const Player = ({ episode, source, auth, onEnded }) => {
   const video = React.useRef(null);
   const lastReport = React.useRef(0);
 
+  // Devuelve la promesa para poder esperar a que el servidor lo guarde (al
+  // terminar, antes de saltar al siguiente). Sin sesion no se reporta nada.
   const report = React.useCallback(() => {
     const node = video.current;
-    if (!auth || !node || !node.duration) return;
+    if (!auth || !node || !node.duration || node.currentTime < MIN_WATCHED_SECONDS) return null;
 
-    player_service.progress({
+    return player_service.progress({
       episodeId: episode.id,
       progress: node.currentTime,
       duration: node.duration,
@@ -36,12 +42,14 @@ const Player = ({ episode, source, auth, onEnded }) => {
 
   React.useEffect(() => () => report(), [report]);
 
-  React.useEffect(() => {
-    const node = video.current;
-    if (!node || !episode?.history?.progress) return;
+  // Retoma donde se dejo, salvo que ya se haya visto entero: reabrir un
+  // episodio terminado debe empezar desde el principio, no en los creditos.
+  const onLoadedMetadata = () => {
+    const saved = episode?.history;
+    if (!video.current || !saved || saved.completed || saved.progress < MIN_WATCHED_SECONDS) return;
 
-    node.currentTime = episode.history.progress;
-  }, [episode?.id]);
+    video.current.currentTime = saved.progress;
+  };
 
   if (!source) {
     return (
@@ -80,9 +88,10 @@ const Player = ({ episode, source, auth, onEnded }) => {
       src={source.url}
       controls
       autoPlay
+      onLoadedMetadata={onLoadedMetadata}
       onTimeUpdate={onTimeUpdate}
       onPause={report}
-      onEnded={() => { report(); onEnded?.(); }}
+      onEnded={async () => { await report(); onEnded?.(); }}
       className="aspect-video w-full bg-black"
     />
   )

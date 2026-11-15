@@ -108,10 +108,11 @@ img { -webkit-user-drag: none; }
 
 /* Numero de ranking: solo contorno, en amarillo apagado. */
 .rank-numeral {
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-family: var(--font-numeral);
+  font-weight: 900;
+  font-stretch: 75%;
   line-height: 0.8;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   color: transparent;
   -webkit-text-stroke: 2px color-mix(in oklab, var(--accent) 55%, transparent);
   paint-order: stroke fill;

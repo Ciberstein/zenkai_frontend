@@ -46,7 +46,10 @@ export const WatchPage = () => {
   const previous = index > 0 ? episodes[index - 1] : null;
   const next = index >= 0 && index < episodes.length - 1 ? episodes[index + 1] : null;
 
-  const onEnded = () => {
+  // El reproductor ya guardo el final antes de llamar aqui: se recarga la lista
+  // para que el episodio salga como visto, haya o no siguiente.
+  const onEnded = async () => {
+    if (auth) await dispatch(episodesThunk(malId));
     if (config?.['player_auto_next'] && next) navigate(`/watch/${malId}/${next.number}`);
   };
 
@@ -88,7 +91,7 @@ export const WatchPage = () => {
               type="button"
               disabled={!previous}
               onClick={() => navigate(`/watch/${malId}/${previous.number}`)}
-              className="inline-flex h-11 cursor-pointer items-center gap-2 bg-surface-2 px-5 text-sm font-semibold transition-[background-color,opacity] hover:bg-line disabled:pointer-events-none disabled:opacity-35"
+              className="cut-sm cut-focus inline-flex h-11 cursor-pointer items-center gap-2 bg-surface-2 px-5 font-display text-sm font-bold uppercase tracking-[0.08em] transition-[background-color,opacity] hover:bg-line disabled:pointer-events-none disabled:opacity-35"
             >
               <Icon name="chevron-left" className="size-4" />
               Anterior
@@ -98,7 +101,7 @@ export const WatchPage = () => {
               type="button"
               disabled={!next}
               onClick={() => navigate(`/watch/${malId}/${next.number}`)}
-              className="inline-flex h-11 cursor-pointer items-center gap-2 bg-fg px-5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-35"
+              className="cut-sm cut-focus inline-flex h-11 cursor-pointer items-center gap-2 bg-accent px-5 font-display text-sm font-bold uppercase tracking-[0.08em] text-accent-fg transition-[filter] hover:brightness-110 disabled:pointer-events-none disabled:opacity-35"
             >
               Siguiente
               <Icon name="chevron-right" className="size-4" />
@@ -117,6 +120,7 @@ export const WatchPage = () => {
           <ul className="flex max-h-136 flex-col overflow-y-auto lg:max-h-[calc(100vh-14rem)]">
             {episodes.map((item) => {
               const current = item.number === Number(number);
+              const seen = Boolean(item.history?.completed);
 
               return (
                 <li key={item.id}>
@@ -134,11 +138,14 @@ export const WatchPage = () => {
                       {item.number}
                     </span>
 
-                    <span className={clsx('line-clamp-1 flex-1', current ? 'font-semibold' : 'text-fg/80')}>
+                    <span className={clsx('line-clamp-1 flex-1', current ? 'font-semibold' : seen ? 'text-muted' : 'text-fg/80')}>
                       {item.title ?? `${t('Episode')} ${item.number}`}
                     </span>
 
-                    {current && <Icon name="play" className="size-3.5 shrink-0 text-accent-text" />}
+                    {/* Visto manda sobre "reproduciendo": la fila actual ya va resaltada. */}
+                    {seen
+                      ? <Icon name="check" className="size-4 shrink-0 text-accent-text" aria-label="Visto" />
+                      : current && <Icon name="play" className="size-3.5 shrink-0 text-accent-text" />}
                   </Link>
                 </li>
               )
