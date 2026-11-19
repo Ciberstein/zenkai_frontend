@@ -73,8 +73,24 @@ and the `partials/` only render.
 
 ## Player and watch history
 
-The player uses a native `<video>` for `mp4` sources and an `<iframe>` for `embed`
-sources (`hls` is not supported yet). When the user is **logged in** it:
+The player picks the engine from the source type: **hls.js** for `hls` (the native
+player on Safari), a plain `<video>` for `mp4` and an `<iframe>` for `embed`.
+
+A settings button (top right of the video, with its own fullscreen button) opens a
+menu with whatever the source offers:
+
+- **Audio:** the audio tracks declared in the HLS manifest, one per language.
+- **Quality:** Auto plus one entry per resolution in the manifest.
+- **Subtitles:** the WebVTT tracks stored for the episode (`episode.subtitles`,
+  drawn with `<track>`) plus any subtitle rendition in the manifest. Only one is
+  shown at a time.
+
+The chosen audio and subtitle language is remembered in `localStorage`
+(`zk_player_prefs`) and applied to the next episodes. Subtitle files and HLS
+segments must be served with CORS headers, since the video is requested in CORS mode
+when the episode has subtitles.
+
+When the user is **logged in** it:
 
 - reports progress every 15 s, on pause and when the episode ends, ignoring
   anything under 5 s of playback;

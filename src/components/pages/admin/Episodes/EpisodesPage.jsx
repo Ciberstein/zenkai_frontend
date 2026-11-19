@@ -5,6 +5,7 @@ import api from '../../../../api/axios'
 import { Button, Tag } from '../../../material'
 import NoData from '../../../shared/NoData'
 import SourceDialog from './partials/SourceDialog'
+import SubtitleDialog from './partials/SubtitleDialog'
 
 export const EpisodesPage = () => {
 
@@ -12,6 +13,7 @@ export const EpisodesPage = () => {
 
   const [episodes, setEpisodes] = React.useState([]);
   const [selected, setSelected] = React.useState(null);
+  const [subtitling, setSubtitling] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
 
   const load = React.useCallback(async () => {
@@ -32,6 +34,11 @@ export const EpisodesPage = () => {
 
   const removeSource = async (sourceId) => {
     await api.delete(`${API_ROUTES.ADMIN}/anime/sources/${sourceId}`);
+    load();
+  };
+
+  const removeSubtitle = async (subtitleId) => {
+    await api.delete(`${API_ROUTES.ADMIN}/anime/subtitles/${subtitleId}`);
     load();
   };
 
@@ -59,10 +66,35 @@ export const EpisodesPage = () => {
                   {episode.title ?? '—'}
                 </span>
 
+                <Button color="ghost" size="sm" onClick={() => setSubtitling(episode)}>
+                  + Subtítulos
+                </Button>
+
                 <Button color="ghost" size="sm" onClick={() => setSelected(episode)}>
                   + Fuente
                 </Button>
               </div>
+
+              {episode.subtitles?.length > 0 && (
+                <ul className="ml-12 flex flex-wrap gap-2">
+                  {episode.subtitles.map((subtitle) => (
+                    <li key={subtitle.id} className="flex items-center gap-1">
+                      <Tag color="outline">
+                        CC · {subtitle.label} · {subtitle.language}{subtitle.default ? ' · por defecto' : ''}
+                      </Tag>
+
+                      <button
+                        type="button"
+                        onClick={() => removeSubtitle(subtitle.id)}
+                        aria-label={`Eliminar subtítulos ${subtitle.label}`}
+                        className="px-1.5 text-xs text-muted transition-colors hover:bg-red-500/15 hover:text-red-400"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
               {episode.sources?.length > 0 && (
                 <ul className="ml-12 flex flex-wrap gap-2">
@@ -89,6 +121,15 @@ export const EpisodesPage = () => {
         </ul>
       ) : (
         <NoData message="Sincroniza para traer la lista de episodios" />
+      )}
+
+      {subtitling && (
+        <SubtitleDialog
+          episode={subtitling}
+          open={Boolean(subtitling)}
+          onClose={() => setSubtitling(null)}
+          onSaved={load}
+        />
       )}
 
       {selected && (

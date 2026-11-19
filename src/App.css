@@ -153,3 +153,8 @@ img { -webkit-user-drag: none; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* El boton de pantalla completa nativo solo pone el <video> a pantalla
+   completa y el menu de audio/subtitulos desaparece. El reproductor trae el
+   suyo, que lleva el contenedor entero. */
+.zk-player video::-webkit-media-controls-fullscreen-button { display: none; }
