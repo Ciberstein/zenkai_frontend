@@ -18,6 +18,17 @@ const readPrefs = () => {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY)) ?? {}; } catch { return {}; }
 };
 
+// "ja" → "Japonés". Los manifiestos suelen traer nombres genericos ("audio_1")
+// pero siempre el codigo de idioma, que es lo que de verdad dice que suena.
+const languageName = (code, fallback) => {
+  try {
+    const name = new Intl.DisplayNames(['es'], { type: 'language' }).of(code);
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  } catch {
+    return fallback;
+  }
+};
+
 const savePref = (key, value) => {
   try { localStorage.setItem(PREFS_KEY, JSON.stringify({ ...readPrefs(), [key]: value })); } catch { /* sin storage */ }
 };
@@ -139,7 +150,7 @@ const Player = ({ episode, source, auth, onEnded }) => {
     hls.current = instance;
 
     const syncAudio = () => setAudio({
-      tracks: instance.audioTracks.map((track, index) => ({ key: String(index), label: track.name || track.lang || `Pista ${index + 1}`, lang: track.lang })),
+      tracks: instance.audioTracks.map((track, index) => ({ key: String(index), label: (track.lang && languageName(track.lang, track.name)) || track.name || `Pista ${index + 1}`, lang: track.lang })),
       current: String(instance.audioTrack),
     });
 
@@ -173,7 +184,7 @@ const Player = ({ episode, source, auth, onEnded }) => {
 
     instance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
       setHlsCaptions(instance.subtitleTracks.map((track, index) => ({
-        key: `hls:${index}`, label: track.name || track.lang || `Subtítulos ${index + 1}`, lang: track.lang,
+        key: `hls:${index}`, label: (track.lang && languageName(track.lang, track.name)) || track.name || `Subtítulos ${index + 1}`, lang: track.lang,
       })));
     });
 
