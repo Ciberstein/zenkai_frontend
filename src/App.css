@@ -154,10 +154,40 @@ img { -webkit-user-drag: none; }
   }
 }
 
-/* El boton de pantalla completa nativo solo pone el <video> a pantalla
-   completa y el menu de audio/subtitulos desaparece. El reproductor trae el
-   suyo, que lleva el contenedor entero. */
-.zk-player video::-webkit-media-controls-fullscreen-button { display: none; }
+/* Pantalla completa del reproductor: el contenedor entero (video + controles) y no
+   solo el <video>. Rellena la pantalla en lugar de mantener el 16:9. */
+.zk-player:fullscreen,
+.zk-player:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+}
+
+/* Deslizador de volumen del reproductor: linea fina con relleno amarillo y
+   marcador cuadrado, como la barra de progreso. */
+.zk-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+.zk-range::-webkit-slider-runnable-track {
+  height: 3px;
+  background: linear-gradient(to right, var(--accent) var(--v, 0%), rgb(255 255 255 / 0.25) var(--v, 0%));
+}
+.zk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -3.5px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+.zk-range::-moz-range-track { height: 3px; background: rgb(255 255 255 / 0.25); }
+.zk-range::-moz-range-progress { height: 3px; background: var(--accent); }
+.zk-range::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 0; background: var(--accent); transform: rotate(45deg); }
 
 /* Las lineas CRT (body::after, z-index 9998) van por encima de todo; sobre el
    video ensucian la imagen. El reproductor, el embed y el aviso de "sin fuente"

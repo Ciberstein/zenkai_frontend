@@ -76,14 +76,40 @@ and the `partials/` only render.
 The player picks the engine from the source type: **hls.js** for `hls` (the native
 player on Safari), a plain `<video>` for `mp4` and an `<iframe>` for `embed`.
 
-A settings button (top right of the video, with its own fullscreen button) opens a
-menu with whatever the source offers:
+The watch page is just the player, covering the whole screen (no site header, no
+episode list). Everything else lives inside it:
 
-- **Audio:** the audio tracks declared in the HLS manifest, one per language.
-- **Quality:** Auto plus one entry per resolution in the manifest.
-- **Subtitles:** the WebVTT tracks stored for the episode (`episode.subtitles`,
-  drawn with `<track>`) plus any subtitle rendition in the manifest. Only one is
-  shown at a time.
+- **Back to the series:** the **X** at the top left goes to `/anime/:malId`, next to the
+  series title and the episode.
+- **Previous / next episode:** buttons in the control bar (disabled at the ends), the
+  `p` and `n` keys, and a **Siguiente episodio** prompt that appears in the last 90 s.
+- **Server:** the sources of the episode are listed in the settings menu. Embeds
+  (iframes) and error states get a slim top bar with the same X, previous/next and
+  server picker, since their own controls cannot be driven.
+
+The controls are custom (the browser's own are off) and follow the site's style: a
+progress bar with the time under the cursor and drag-to-seek, play/pause, ±10 s,
+volume, speed and fullscreen. They hide by themselves after a few seconds of
+playback. The code lives in `Player.jsx` (video, tracks, progress reporting),
+`PlayerControls.jsx` (the interface on top) and `PlayerTopBar.jsx` (the header with
+the X).
+
+- **Mouse:** click pauses, double click toggles fullscreen.
+- **Touch:** a tap shows or hides the controls, a double tap on the left or right
+  side skips 10 s.
+- **Keyboard:** `space`/`k` play-pause, `j`/`l` ∓10 s, `←`/`→` ∓5 s, `↑`/`↓` volume,
+  `m` mute, `f` fullscreen, `c` subtitles on/off, `n`/`p` next/previous episode,
+  `0`–`9` jump to 0–90 %.
+
+Two menus offer whatever the source provides:
+
+- **Audio and subtitles** (the CC button): the audio tracks declared in the HLS
+  manifest, one per language, and the subtitles: the WebVTT tracks stored for the
+  episode (`episode.subtitles`) plus any subtitle rendition in the manifest. Only one
+  is shown at a time. The text of the stored tracks is drawn by the player itself, so
+  it moves up when the controls appear.
+- **Settings:** quality (Auto plus one entry per resolution in the manifest) and
+  speed (0.5× to 2×).
 
 The chosen audio and subtitle language is remembered in `localStorage`
 (`zk_player_prefs`) and applied to the next episodes. Subtitle files and HLS
@@ -95,8 +121,8 @@ When the user is **logged in** it:
 - reports progress every 15 s, on pause and when the episode ends, ignoring
   anything under 5 s of playback;
 - resumes where the user left off, unless the episode was already completed;
-- marks the episode as watched (the server flags it as completed at 85 %), which
-  shows a check in the episode list without reloading.
+- marks the episode as watched (the server flags it as completed at 85 %): the
+  episode list is refreshed when it ends, so the series page shows the check.
 
 Guests are never asked for or sent any history.
 

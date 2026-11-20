@@ -48,18 +48,14 @@ const User = ({ children, auth = false }) => {
 
 // ─── Watch ────────────────────────────────────────────────────────────────────
 
-// El reproductor manda: sin ancho maximo ni pie, y siempre en oscuro aunque el
-// resto del sitio este en claro, que es como se ve un video.
-const Watch = ({ children, auth = false }) => {
+// El reproductor manda: sin barra superior, ni ancho maximo ni pie, y siempre en
+// oscuro aunque el resto del sitio este en claro, que es como se ve un video. La
+// propia pagina ocupa la pantalla entera.
+const Watch = ({ children }) => {
 
   useTitle('Watch');
 
-  return (
-    <div className="dark min-h-screen bg-bg text-fg">
-      <Navbar.User auth={auth} />
-      <main className="w-full">{children}</main>
-    </div>
-  )
+  return <div className="dark bg-black text-fg">{children}</div>
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

@@ -1,15 +1,19 @@
 import React from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { Context } from '../../../../context'
 import { animeThunk } from '../../../../store/slices/anime.slice'
 import { episodesThunk, episodeThunk } from '../../../../store/slices/episodes.slice'
-import { Skeleton } from '../../../material'
-import Icon from '../../../shared/Icon'
 import Player from './partials/Player'
-import ServerPicker from './partials/ServerPicker'
-import clsx from 'clsx'
+import PlayerTopBar from './partials/PlayerTopBar'
+
+// Un marco que tapa toda la pantalla, por encima incluso de las lineas CRT del tema
+// oscuro (z 9998): aqui manda el video. Sin barra superior ni lista de episodios;
+// volver a la serie, cambiar de episodio y de servidor viven dentro del reproductor.
+const Stage = ({ children }) => (
+  <div className="fixed inset-0 z-9999 overflow-hidden bg-black">{children}</div>
+)
 
 export const WatchPage = () => {
 
@@ -46,6 +50,13 @@ export const WatchPage = () => {
   const previous = index > 0 ? episodes[index - 1] : null;
   const next = index >= 0 && index < episodes.length - 1 ? episodes[index + 1] : null;
 
+  const goTo = (item) => () => navigate(`/watch/${malId}/${item.number}`);
+  const close = () => navigate(`/anime/${malId}`);
+
+  // El titulo de la serie solo cuando ya es la de esta pagina: el store puede tener
+  // todavia la anterior mientras carga.
+  const seriesTitle = anime?.mal_id === Number(malId) ? (anime?.titleEnglish ?? anime?.title) : null;
+
   // El reproductor ya guardo el final antes de llamar aqui: se recarga la lista
   // para que el episodio salga como visto, haya o no siguiente.
   const onEnded = async () => {
@@ -55,104 +66,33 @@ export const WatchPage = () => {
 
   if (!episode) {
     return (
-      <div className="mx-auto w-full max-w-400 px-0 pt-(--nav-h) lg:px-6">
-        <Skeleton className="aspect-video w-full " />
-      </div>
+      <Stage>
+        <PlayerTopBar seriesTitle={seriesTitle} onClose={close} />
+
+        <div className="absolute inset-0 grid place-items-center">
+          <span className="size-12 animate-spin border-2 border-white/20 border-t-accent" role="status" aria-label="Cargando" />
+        </div>
+      </Stage>
     )
   }
 
-  const name = episode.title ?? `${t('Episode')} ${episode.number}`;
+  const episodeLabel = `${t('Episode')} ${episode.number}${episode.title ? ` · ${episode.title}` : ''}`;
 
   return (
-    <div className="mx-auto flex w-full max-w-400 flex-col gap-6 pt-(--nav-h) lg:flex-row lg:px-6 lg:pb-10 lg:pt-[calc(var(--nav-h)+1rem)]">
-      <div className="min-w-0 flex-1">
-        <div className="overflow-hidden bg-black lg:cut-lg">
-          <Player episode={episode} source={source} auth={auth} onEnded={onEnded} />
-        </div>
-
-        <ServerPicker sources={episode.sources} selected={source} onSelect={setSource} />
-
-        <div className="flex flex-col gap-4 px-4 py-6 lg:px-1">
-          <Link
-            to={`/anime/${malId}`}
-            className="group/back inline-flex w-fit items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-accent-text"
-          >
-            <Icon name="arrow-left" className="size-4 transition-transform group-hover/back:-translate-x-1" />
-            {anime?.titleEnglish ?? anime?.title}
-          </Link>
-
-          <h1 className="text-[26px] md:text-4xl">
-            <span className="mr-3 text-muted tnum">{episode.number}</span>
-            {name}
-          </h1>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!previous}
-              onClick={() => navigate(`/watch/${malId}/${previous.number}`)}
-              className="cut-sm cut-focus inline-flex h-11 cursor-pointer items-center gap-2 bg-surface-2 px-5 font-display text-sm font-bold uppercase tracking-[0.08em] transition-[background-color,opacity] hover:bg-line disabled:pointer-events-none disabled:opacity-35"
-            >
-              <Icon name="chevron-left" className="size-4" />
-              Anterior
-            </button>
-
-            <button
-              type="button"
-              disabled={!next}
-              onClick={() => navigate(`/watch/${malId}/${next.number}`)}
-              className="cut-sm cut-focus inline-flex h-11 cursor-pointer items-center gap-2 bg-accent px-5 font-display text-sm font-bold uppercase tracking-[0.08em] text-accent-fg transition-[filter] hover:brightness-110 disabled:pointer-events-none disabled:opacity-35"
-            >
-              Siguiente
-              <Icon name="chevron-right" className="size-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <aside className="w-full shrink-0 lg:w-88">
-        <div className="flex flex-col overflow-hidden border-line bg-surface/60 lg:border">
-          <h2 className="flex items-baseline justify-between border-b border-line px-5 py-4 font-sans text-sm font-semibold tracking-normal">
-            {t('Episodes')}
-            <span className="text-xs font-medium text-muted tnum">{episodes.length}</span>
-          </h2>
-
-          <ul className="flex max-h-136 flex-col overflow-y-auto lg:max-h-[calc(100vh-14rem)]">
-            {episodes.map((item) => {
-              const current = item.number === Number(number);
-              const seen = Boolean(item.history?.completed);
-
-              return (
-                <li key={item.id}>
-                  <Link
-                    to={`/watch/${malId}/${item.number}`}
-                    aria-current={current ? 'true' : undefined}
-                    className={clsx(
-                      'relative flex items-center gap-4 px-5 py-3.5 text-sm transition-colors',
-                      current ? 'bg-accent/10' : 'hover:bg-surface-2/70',
-                    )}
-                  >
-                    {current && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.75 bg-accent" />}
-
-                    <span className={clsx('w-7 shrink-0 text-center font-display text-lg font-bold tnum', current ? 'text-accent-text' : 'text-muted')}>
-                      {item.number}
-                    </span>
-
-                    <span className={clsx('line-clamp-1 flex-1', current ? 'font-semibold' : seen ? 'text-muted' : 'text-fg/80')}>
-                      {item.title ?? `${t('Episode')} ${item.number}`}
-                    </span>
-
-                    {/* Visto manda sobre "reproduciendo": la fila actual ya va resaltada. */}
-                    {seen
-                      ? <Icon name="check" className="size-4 shrink-0 text-accent-text" aria-label="Visto" />
-                      : current && <Icon name="play" className="size-3.5 shrink-0 text-accent-text" />}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      </aside>
-    </div>
+    <Stage>
+      <Player
+        episode={episode}
+        source={source}
+        auth={auth}
+        onEnded={onEnded}
+        seriesTitle={seriesTitle}
+        episodeLabel={episodeLabel}
+        onClose={close}
+        onPrev={previous ? goTo(previous) : null}
+        onNext={next ? goTo(next) : null}
+        sources={episode.sources ?? []}
+        onSource={setSource}
+      />
+    </Stage>
   )
 }

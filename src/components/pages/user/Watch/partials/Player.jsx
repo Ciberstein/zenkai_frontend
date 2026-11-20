@@ -1,8 +1,10 @@
 import React from 'react'
-import clsx from 'clsx'
 import Hls from 'hls.js'
 import player_service from '../../../../../services/player.services'
+import { languageName, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
 import Icon from '../../../../shared/Icon'
+import PlayerControls, { IconButton, Section } from './PlayerControls'
+import PlayerTopBar from './PlayerTopBar'
 
 const REPORT_EVERY_MS = 15000;
 
@@ -10,55 +12,43 @@ const REPORT_EVERY_MS = 15000;
 // historial (y un "continuar viendo" a 0:00) por solo abrir un episodio.
 const MIN_WATCHED_SECONDS = 5;
 
-const PREFS_KEY = 'zk_player_prefs';
+// ─── EmbedBar ─────────────────────────────────────────────────────────────────
 
-// Idioma de audio y de subtitulos que el usuario eligio la ultima vez: pasar de
-// episodio no deberia obligarle a volver a elegirlos.
-const readPrefs = () => {
-  try { return JSON.parse(localStorage.getItem(PREFS_KEY)) ?? {}; } catch { return {}; }
-};
+// Un iframe (YouTube, por ejemplo) trae sus propios controles y no se puede mandar
+// sobre el: esta barra fina le da lo que el reproductor propio tiene siempre, volver
+// a la serie, cambiar de episodio y de servidor.
+const EmbedBar = ({ seriesTitle, episodeLabel, onClose, onPrev, onNext, sources, source, onSource }) => {
 
-// "ja" → "Japonés". Los manifiestos suelen traer nombres genericos ("audio_1")
-// pero siempre el codigo de idioma, que es lo que de verdad dice que suena.
-const languageName = (code, fallback) => {
-  try {
-    const name = new Intl.DisplayNames(['es'], { type: 'language' }).of(code);
-    return name.charAt(0).toUpperCase() + name.slice(1);
-  } catch {
-    return fallback;
-  }
-};
-
-const savePref = (key, value) => {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify({ ...readPrefs(), [key]: value })); } catch { /* sin storage */ }
-};
-
-// ─── Menu de ajustes ──────────────────────────────────────────────────────────
-
-// Una seccion sin nada que elegir no se pinta: quien la usa pasa [] en ese caso.
-const Section = ({ title, items, value, onSelect }) => {
-  if (!items.length) return null;
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <div className="flex flex-col gap-1 py-2">
-      <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-[0.16em] text-white/50">{title}</p>
+    <div className="relative h-18 shrink-0 sm:h-24">
+      <PlayerTopBar seriesTitle={seriesTitle} episodeLabel={episodeLabel} onClose={onClose}>
+        <IconButton label="Episodio anterior" onClick={onPrev ?? undefined} disabled={!onPrev}>
+          <Icon name="previous" className="size-5" />
+        </IconButton>
 
-      {items.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          onClick={() => onSelect(item.key)}
-          className={clsx(
-            'flex cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-white/10',
-            value === item.key ? 'text-accent' : 'text-white/85',
-          )}
-        >
-          <span className="grid size-4 shrink-0 place-items-center">
-            {value === item.key && <Icon name="check" className="size-4" />}
-          </span>
-          {item.label}
-        </button>
-      ))}
+        <IconButton label="Siguiente episodio" onClick={onNext ?? undefined} disabled={!onNext}>
+          <Icon name="next" className="size-5" />
+        </IconButton>
+
+        {sources.length > 1 && (
+          <IconButton label="Servidor" active={open} aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+            <Icon name="settings" className="size-6" />
+          </IconButton>
+        )}
+      </PlayerTopBar>
+
+      {open && (
+        <div className="absolute right-3 top-full z-30 mt-1 max-h-[60vh] w-64 overflow-y-auto bg-black/92 text-white backdrop-blur-md sm:right-6">
+          <Section
+            title="Servidor"
+            items={sources.map((item) => ({ key: String(item.id), label: sourceLabel(item) }))}
+            value={String(source?.id)}
+            onSelect={(key) => { setOpen(false); onSource(sources.find((item) => String(item.id) === key)); }}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -71,16 +61,21 @@ const Section = ({ title, items, value, onSelect }) => {
 //   · mp4   → <video> directo.
 //   · embed → iframe: ahi no hay control de progreso posible, es el precio de
 //             apoyarse en un reproductor ajeno.
-// Los subtitulos son archivos WebVTT aparte (episode.subtitles) y se dibujan
-// con <track>, asi que sirven con cualquier fuente.
-const Player = ({ episode, source, auth, onEnded }) => {
+// Los subtitulos son archivos WebVTT aparte (episode.subtitles); el texto lo
+// dibuja PlayerControls. Esta pieza lleva el video, las pistas y el progreso; la
+// interfaz (controles, barra, atajos) vive en PlayerControls.
+const Player = ({
+  episode, source, auth, onEnded,
+  seriesTitle = null, episodeLabel = null, onClose = null,
+  onPrev = null, onNext = null,
+  sources = [], onSource = () => {},
+}) => {
 
   const wrapper = React.useRef(null);
   const video = React.useRef(null);
   const hls = React.useRef(null);
   const lastReport = React.useRef(0);
 
-  const [menu, setMenu] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
   // Los subtitulos piden el video en modo CORS; si el servidor del mp4 no lo
   // permite, el video no carga. En ese caso se reintenta sin CORS (sin subtitulos).
@@ -223,9 +218,11 @@ const Player = ({ episode, source, auth, onEnded }) => {
     const node = video.current;
     if (!node) return;
 
+    // `hidden` carga la pista y dispara sus eventos pero no la dibuja el navegador:
+    // el texto lo pinta PlayerControls, para poder subirlo cuando aparece la barra.
     for (const track of node.textTracks) {
       if (!track.id.startsWith('zk-')) continue;
-      track.mode = caption === `db:${track.id.slice(3)}` ? 'showing' : 'disabled';
+      track.mode = caption === `db:${track.id.slice(3)}` ? 'hidden' : 'disabled';
     }
 
     if (hls.current) {
@@ -233,11 +230,12 @@ const Player = ({ episode, source, auth, onEnded }) => {
       hls.current.subtitleDisplay = own;
       if (own) hls.current.subtitleTrack = Number(caption.slice(4));
     }
-  }, [caption, hlsCaptions.length, source?.url, episode?.id]);
+  }, [caption, hlsCaptions.length, source?.url, episode?.id, cors]);
 
+  // Sin CORS (reintento de un mp4 ajeno) los .vtt no se cargan: no se ofrecen en el menu.
   const captions = [
     { key: 'off', label: 'Desactivados' },
-    ...subtitles.map((track) => ({ key: `db:${track.id}`, label: track.label, lang: track.language })),
+    ...(cors ? subtitles.map((track) => ({ key: `db:${track.id}`, label: track.label, lang: track.language })) : []),
     ...hlsCaptions,
   ];
 
@@ -257,16 +255,12 @@ const Player = ({ episode, source, auth, onEnded }) => {
     setLevels((prev) => ({ ...prev, current: Number(key) }));
   };
 
-  const fullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else wrapper.current?.requestFullscreen?.();
-  };
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (!source) {
     return (
-      <div className="zk-screen grid aspect-video w-full place-items-center overflow-hidden bg-black px-6 text-center">
+      <div className="zk-screen grid size-full place-items-center overflow-hidden bg-black px-6 text-center">
+        <PlayerTopBar seriesTitle={seriesTitle} episodeLabel={episodeLabel} onClose={onClose} />
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--accent)_16%,transparent),transparent_65%)]"
@@ -286,35 +280,47 @@ const Player = ({ episode, source, auth, onEnded }) => {
 
   if (source.type === 'embed') {
     return (
-      <iframe
-        src={source.url}
-        title={`Episodio ${episode.number}`}
-        allowFullScreen
-        className="zk-screen aspect-video w-full bg-black"
-      />
+      <div className="zk-screen flex size-full flex-col bg-black">
+        <EmbedBar
+          seriesTitle={seriesTitle}
+          episodeLabel={episodeLabel}
+          onClose={onClose}
+          onPrev={onPrev}
+          onNext={onNext}
+          sources={sources}
+          source={source}
+          onSource={onSource}
+        />
+
+        <iframe
+          src={source.url}
+          title={episodeLabel ?? `Episodio ${episode.number}`}
+          allowFullScreen
+          className="min-h-0 w-full flex-1 bg-black"
+        />
+      </div>
     )
   }
 
-  const hasMenu = audio.tracks.length > 1 || levels.list.length > 1 || captions.length > 1;
+  const mediaKey = `${source.url}-${cors}`;
 
   return (
-    <div ref={wrapper} className="zk-player group/player relative aspect-video w-full bg-black">
+    <div ref={wrapper} tabIndex={0} className="zk-player relative size-full bg-black outline-none">
       <video
-        key={`${source.url}-${cors}`}
+        key={mediaKey}
         ref={video}
         // Los subtitulos suelen vivir en otro dominio: el navegador solo los carga
         // si el video se pide en modo CORS (y el servidor lo permite).
         crossOrigin={subtitles.length && cors ? 'anonymous' : undefined}
         onError={() => { if (!isHls && subtitles.length && cors) setCors(false); }}
         src={isHls ? undefined : source.url}
-        controls
         autoPlay
         playsInline
         onLoadedMetadata={onLoadedMetadata}
         onTimeUpdate={onTimeUpdate}
         onPause={report}
         onEnded={async () => { await report(); onEnded?.(); }}
-        className="size-full bg-black"
+        className="size-full bg-black object-contain"
       >
         {subtitles.map((track) => (
           <track
@@ -328,54 +334,47 @@ const Player = ({ episode, source, auth, onEnded }) => {
         ))}
       </video>
 
-      {failed && (
-        <div className="absolute inset-0 grid place-items-center bg-black/80 px-6 text-center">
+      {failed ? (
+        <div className="absolute inset-0 z-20 grid place-items-center bg-black/80 px-6 text-center">
+          <div className="absolute inset-x-0 top-0">
+            <EmbedBar
+              seriesTitle={seriesTitle}
+              episodeLabel={episodeLabel}
+              onClose={onClose}
+              onPrev={onPrev}
+              onNext={onNext}
+              sources={sources}
+              source={source}
+              onSource={onSource}
+            />
+          </div>
+
           <p className="max-w-sm text-sm text-white/80">
             No se pudo reproducir esta fuente. Prueba con otro servidor.
           </p>
         </div>
+      ) : (
+        <PlayerControls
+          video={video}
+          wrapper={wrapper}
+          mediaKey={mediaKey}
+          seriesTitle={seriesTitle}
+          episodeLabel={episodeLabel}
+          onClose={onClose}
+          audio={audio}
+          levels={levels}
+          captions={captions}
+          caption={caption}
+          onAudio={chooseAudio}
+          onLevel={chooseLevel}
+          onCaption={chooseCaption}
+          onPrev={onPrev}
+          onNext={onNext}
+          sources={sources}
+          source={source}
+          onSource={onSource}
+        />
       )}
-
-      <div
-        className={clsx(
-          'absolute right-3 top-3 z-10 flex items-start gap-2 transition-opacity duration-200',
-          menu ? 'opacity-100' : 'opacity-0 group-hover/player:opacity-100 focus-within:opacity-100',
-        )}
-      >
-        {menu && (
-          <div className="cut-sm max-h-[70%] w-56 divide-y divide-white/10 overflow-y-auto bg-black/90 py-1 text-white backdrop-blur-md">
-            <Section title="Audio" items={audio.tracks.length > 1 ? audio.tracks : []} value={audio.current} onSelect={chooseAudio} />
-            <Section
-              title="Calidad"
-              items={levels.list.length > 1 ? [{ key: '-1', label: 'Auto' }, ...levels.list] : []}
-              value={String(levels.current)}
-              onSelect={chooseLevel}
-            />
-            <Section title="Subtítulos" items={captions.length > 1 ? captions : []} value={caption} onSelect={chooseCaption} />
-          </div>
-        )}
-
-        {hasMenu && (
-          <button
-            type="button"
-            onClick={() => setMenu((open) => !open)}
-            aria-label="Ajustes del reproductor"
-            aria-expanded={menu}
-            className="cut-xs grid size-9 cursor-pointer place-items-center bg-black/70 text-white transition-colors hover:bg-accent hover:text-accent-fg"
-          >
-            <Icon name="settings" className="size-5" />
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={fullscreen}
-          aria-label="Pantalla completa"
-          className="cut-xs grid size-9 cursor-pointer place-items-center bg-black/70 text-white transition-colors hover:bg-accent hover:text-accent-fg"
-        >
-          <Icon name="fullscreen" className="size-5" />
-        </button>
-      </div>
     </div>
   )
 }
