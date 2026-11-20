@@ -41,6 +41,7 @@ const uploads = {
   createAudio: (episodeId, body) => api.post(`${base}/episodes/${episodeId}/audio-uploads`, body).then((res) => res.data),
   // Audios que tiene publicado el episodio y quitar uno (p. ej. un doblaje de mas).
   audio: (episodeId) => api.get(`${base}/episodes/${episodeId}/audio`).then((res) => res.data),
+  defaultAudio: (episodeId, dir) => api.put(`${base}/episodes/${episodeId}/audio/${dir}/default`).then((res) => res.data),
   removeAudio: (episodeId, dir) => api.delete(`${base}/episodes/${episodeId}/audio/${dir}`).then((res) => res.data),
   put,
 };

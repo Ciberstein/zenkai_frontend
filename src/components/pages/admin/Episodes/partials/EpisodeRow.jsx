@@ -61,20 +61,36 @@ const Block = ({ title, count, empty, children }) => (
   </section>
 )
 
-// Audios del episodio, leidos del manifiesto publicado. Se vuelve a leer cuando cambia la ultima
-// subida (por ejemplo, al terminar de añadir un doblaje).
-const AudioBlock = ({ episodeId, version }) => {
+// Audios del episodio, leidos del manifiesto publicado. Se vuelven a leer cuando cambia la
+// ultima subida (por ejemplo, al terminar de añadir un doblaje).
+const useAudio = (episodeId, enabled, version) => {
 
   const [tracks, setTracks] = React.useState(null);
   const [error, setError] = React.useState(null);
 
   const load = React.useCallback(() => {
+    if (!enabled) return;
+
     uploads.audio(episodeId)
       .then((list) => { setTracks(list); setError(null); })
       .catch((err) => setError(err.response?.data?.message ?? err.message));
-  }, [episodeId]);
+  }, [episodeId, enabled]);
 
   React.useEffect(() => { load() }, [load, version]);
+
+  return { tracks, error, setError, load };
+}
+
+const AudioBlock = ({ episodeId, tracks, error, setError, load }) => {
+
+  const makeDefault = async (track) => {
+    try {
+      await uploads.defaultAudio(episodeId, track.dir);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message ?? err.message);
+    }
+  };
 
   const remove = async (track) => {
     const name = languageName(track.lang, track.lang ?? track.dir);
@@ -109,6 +125,16 @@ const AudioBlock = ({ episodeId, version }) => {
                 </p>
               </div>
 
+              {!track.default && (
+                <button
+                  type="button"
+                  onClick={() => makeDefault(track)}
+                  className={clsx('shrink-0 cursor-pointer px-2 py-1 text-muted transition-colors hover:bg-surface-2 hover:text-fg', MONO)}
+                >
+                  Predeterminado
+                </button>
+              )}
+
               {tracks.length > 1 && <RemoveButton label={`Quitar el audio ${track.dir}`} onClick={() => remove(track)} />}
             </li>
           ))}
@@ -141,10 +167,13 @@ const EpisodeRow = ({
   const available = sources.length > 0;
   const published = sources.some((source) => source.type === 'hls');
 
+  const audio = useAudio(episode.id, published, upload?.id ? `${upload.id}-${upload.status}` : '');
+
   const meta = metaOf(episode);
   const summary = [
     `${sources.length} ${sources.length === 1 ? 'fuente' : 'fuentes'}`,
     subtitles.length ? `${subtitles.length} ${subtitles.length === 1 ? 'subtítulo' : 'subtítulos'}` : null,
+    audio.tracks?.length ? `${audio.tracks.length} ${audio.tracks.length === 1 ? 'audio' : 'audios'}` : null,
   ].filter(Boolean).join(' · ');
 
   return (
@@ -292,7 +321,7 @@ const EpisodeRow = ({
             ))}
           </Block>
 
-          {published && <AudioBlock episodeId={episode.id} version={upload?.id ? `${upload.id}-${upload.status}` : ''} />}
+          {published && <AudioBlock episodeId={episode.id} {...audio} />}
 
           <Block title="Subtítulos" count={subtitles.length} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
             {subtitles.map((subtitle) => (
