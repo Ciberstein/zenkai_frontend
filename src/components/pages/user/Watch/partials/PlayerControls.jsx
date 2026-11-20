@@ -213,7 +213,10 @@ const PlayerControls = ({
     const active = [...node.textTracks].find((item) => item.id === `zk-${caption.slice(3)}`);
     if (!active) return;
 
-    const read = () => setCue([...(active.activeCues ?? [])].map((item) => item.text.replace(/<[^>]+>/g, '')));
+    // El texto de un .vtt llega con las entidades escapadas (&amp;, &lt;…): se muestran como texto.
+    const ENTITIES = { amp: '&', lt: '<', gt: '>', nbsp: ' ', lrm: '', rlm: '' };
+    const plain = (text) => text.replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|nbsp|lrm|rlm);/g, (_, name) => ENTITIES[name]);
+    const read = () => setCue([...(active.activeCues ?? [])].map((item) => plain(item.text)));
 
     active.addEventListener('cuechange', read);
     read();

@@ -66,7 +66,7 @@ const Block = ({ title, count, empty, children }) => (
 // que se despliega, asi la lista se lee de un vistazo aunque haya cientos de episodios.
 const EpisodeRow = ({
   episode, open, onToggle,
-  onUpload, onSource, onSubtitle,
+  onUpload, onSource, onSubtitle, onAudio,
   onRemoveSource, onRemoveSubtitle,
   onRetry, onDiscard,
 }) => {
@@ -80,6 +80,7 @@ const EpisodeRow = ({
   const sources = episode.sources ?? [];
   const subtitles = episode.subtitles ?? [];
   const available = sources.length > 0;
+  const published = sources.some((source) => source.type === 'hls');
 
   const meta = metaOf(episode);
   const summary = [
@@ -185,9 +186,18 @@ const EpisodeRow = ({
               <MenuItem>
                 <button type="button" className={MENU_ITEM} onClick={() => onSubtitle(episode)}>
                   <Icon name="captions" className="size-4.5 text-muted" />
-                  Añadir subtítulos (.vtt)
+                  Añadir subtítulos
                 </button>
               </MenuItem>
+
+              {published && (
+                <MenuItem>
+                  <button type="button" className={MENU_ITEM} onClick={() => onAudio(episode)}>
+                    <Icon name="volume" className="size-4.5 text-muted" />
+                    Añadir audio (doblaje)
+                  </button>
+                </MenuItem>
+              )}
             </MenuItems>
           </Menu>
         </div>

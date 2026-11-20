@@ -63,7 +63,7 @@ export const AnimePage = () => {
         onFavorite={onFavorite}
       />
 
-      <EpisodeList malId={malId} episodes={episodes} />
+      <EpisodeList key={malId} malId={malId} anime={anime} episodes={episodes} />
 
       <Rail title={t('Recommendations')} items={recommendations} />
 

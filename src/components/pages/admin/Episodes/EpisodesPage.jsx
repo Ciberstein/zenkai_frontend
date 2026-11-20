@@ -10,6 +10,7 @@ import Icon from '../../../shared/Icon'
 import NoData from '../../../shared/NoData'
 import EpisodeRow from './partials/EpisodeRow'
 import SourceDialog from './partials/SourceDialog'
+import AudioDialog from './partials/AudioDialog'
 import SubtitleDialog from './partials/SubtitleDialog'
 import UploadDialog from './partials/UploadDialog'
 
@@ -29,6 +30,7 @@ export const EpisodesPage = () => {
   const [episodes, setEpisodes] = React.useState([]);
   const [selected, setSelected] = React.useState(null);
   const [subtitling, setSubtitling] = React.useState(null);
+  const [dubbing, setDubbing] = React.useState(null);
   const [uploading, setUploading] = React.useState(null);
   const [dropped, setDropped] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
@@ -163,6 +165,7 @@ export const EpisodesPage = () => {
                 onUpload={openUpload}
                 onSource={setSelected}
                 onSubtitle={setSubtitling}
+                onAudio={setDubbing}
                 onRemoveSource={removeSource}
                 onRemoveSubtitle={removeSubtitle}
                 onRetry={retryUpload}
@@ -187,6 +190,15 @@ export const EpisodesPage = () => {
           open={Boolean(uploading)}
           initialFiles={dropped}
           onClose={() => { setUploading(null); setDropped(null); }}
+          onDone={load}
+        />
+      )}
+
+      {dubbing && (
+        <AudioDialog
+          episode={dubbing}
+          open={Boolean(dubbing)}
+          onClose={() => setDubbing(null)}
           onDone={load}
         />
       )}
