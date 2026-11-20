@@ -20,6 +20,7 @@ const PATHS = {
   volume: <><path d="M4 9.5v5h3.5l4.5 3.5V6L7.5 9.5H4Z" /><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" /></>,
   'volume-low': <><path d="M4 9.5v5h3.5l4.5 3.5V6L7.5 9.5H4Z" /><path d="M15.5 9a4 4 0 0 1 0 6" /></>,
   'volume-mute': <><path d="M4 9.5v5h3.5l4.5 3.5V6L7.5 9.5H4Z" /><path d="m16 9.5 5 5M21 9.5l-5 5" /></>,
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth="2.5" />,
   captions: <><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="M10.2 10.4a2 2 0 0 0-3.2.6v2a2 2 0 0 0 3.2.6M17.2 10.4a2 2 0 0 0-3.2.6v2a2 2 0 0 0 3.2.6" /></>,
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20Z" />,
   info: <><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5.5M12 7.75v.01" /></>,
