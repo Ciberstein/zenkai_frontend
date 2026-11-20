@@ -158,3 +158,12 @@ img { -webkit-user-drag: none; }
    completa y el menu de audio/subtitulos desaparece. El reproductor trae el
    suyo, que lleva el contenedor entero. */
 .zk-player video::-webkit-media-controls-fullscreen-button { display: none; }
+
+/* Las lineas CRT (body::after, z-index 9998) van por encima de todo; sobre el
+   video ensucian la imagen. El reproductor, el embed y el aviso de "sin fuente"
+   quedan por encima de ellas. */
+.zk-player,
+.zk-screen {
+  position: relative;
+  z-index: 9999;
+}

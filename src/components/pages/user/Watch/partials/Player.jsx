@@ -82,6 +82,9 @@ const Player = ({ episode, source, auth, onEnded }) => {
 
   const [menu, setMenu] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
+  // Los subtitulos piden el video en modo CORS; si el servidor del mp4 no lo
+  // permite, el video no carga. En ese caso se reintenta sin CORS (sin subtitulos).
+  const [cors, setCors] = React.useState(true);
 
   const [audio, setAudio] = React.useState({ tracks: [], current: null });
   const [levels, setLevels] = React.useState({ list: [], current: -1 });
@@ -130,6 +133,7 @@ const Player = ({ episode, source, auth, onEnded }) => {
     const node = video.current;
 
     setFailed(false);
+    setCors(true);
     setAudio({ tracks: [], current: null });
     setLevels({ list: [], current: -1 });
     setHlsCaptions([]);
@@ -262,7 +266,7 @@ const Player = ({ episode, source, auth, onEnded }) => {
 
   if (!source) {
     return (
-      <div className="relative grid aspect-video w-full place-items-center overflow-hidden bg-black px-6 text-center">
+      <div className="zk-screen grid aspect-video w-full place-items-center overflow-hidden bg-black px-6 text-center">
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--accent)_16%,transparent),transparent_65%)]"
@@ -286,7 +290,7 @@ const Player = ({ episode, source, auth, onEnded }) => {
         src={source.url}
         title={`Episodio ${episode.number}`}
         allowFullScreen
-        className="aspect-video w-full bg-black"
+        className="zk-screen aspect-video w-full bg-black"
       />
     )
   }
@@ -296,10 +300,12 @@ const Player = ({ episode, source, auth, onEnded }) => {
   return (
     <div ref={wrapper} className="zk-player group/player relative aspect-video w-full bg-black">
       <video
+        key={`${source.url}-${cors}`}
         ref={video}
         // Los subtitulos suelen vivir en otro dominio: el navegador solo los carga
         // si el video se pide en modo CORS (y el servidor lo permite).
-        crossOrigin={subtitles.length ? 'anonymous' : undefined}
+        crossOrigin={subtitles.length && cors ? 'anonymous' : undefined}
+        onError={() => { if (!isHls && subtitles.length && cors) setCors(false); }}
         src={isHls ? undefined : source.url}
         controls
         autoPlay
