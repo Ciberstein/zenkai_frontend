@@ -3,6 +3,8 @@ import clsx from 'clsx'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Button } from '../../../../material'
 import Icon from '../../../../shared/Icon'
+import uploads from '../../../../../services/uploads.services'
+import { languageName } from '../../../../../utils/player.util'
 import { UPLOAD_BUSY, latestUpload } from '../../../../../utils/upload.util'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -58,6 +60,63 @@ const Block = ({ title, count, empty, children }) => (
     {count ? <ul className="divide-y divide-line">{children}</ul> : <p className="py-2 text-sm text-muted">{empty}</p>}
   </section>
 )
+
+// Audios del episodio, leidos del manifiesto publicado. Se vuelve a leer cuando cambia la ultima
+// subida (por ejemplo, al terminar de añadir un doblaje).
+const AudioBlock = ({ episodeId, version }) => {
+
+  const [tracks, setTracks] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  const load = React.useCallback(() => {
+    uploads.audio(episodeId)
+      .then((list) => { setTracks(list); setError(null); })
+      .catch((err) => setError(err.response?.data?.message ?? err.message));
+  }, [episodeId]);
+
+  React.useEffect(() => { load() }, [load, version]);
+
+  const remove = async (track) => {
+    const name = languageName(track.lang, track.lang ?? track.dir);
+    if (!window.confirm(`¿Quitar el audio "${name}" (${track.dir}) del episodio? Se borra también del bucket.`)) return;
+
+    try {
+      await uploads.removeAudio(episodeId, track.dir);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message ?? err.message);
+    }
+  };
+
+  return (
+    <section>
+      <h3 className="mb-1 flex items-baseline gap-2 font-mono text-[11px] font-normal uppercase tracking-[0.18em] text-muted">
+        Audios
+        <span className="tnum text-fg/60">{tracks?.length ?? 0}</span>
+      </h3>
+
+      {error && <p className="py-2 text-sm text-red-400">{error}</p>}
+
+      {tracks && (
+        <ul className="divide-y divide-line">
+          {tracks.map((track) => (
+            <li key={track.dir} className="flex items-center gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{languageName(track.lang, track.lang ?? track.dir)}</p>
+                <p className={clsx('truncate text-muted', MONO)}>
+                  {track.dir}
+                  {track.default && <span className="text-accent-text"> · por defecto</span>}
+                </p>
+              </div>
+
+              {tracks.length > 1 && <RemoveButton label={`Quitar el audio ${track.dir}`} onClick={() => remove(track)} />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
 
 // ─── EpisodeRow ───────────────────────────────────────────────────────────────
 
@@ -217,7 +276,7 @@ const EpisodeRow = ({
       </div>
 
       {open && (
-        <div className="grid gap-6 border-t border-line bg-surface-2/40 px-4 py-4 sm:grid-cols-2 sm:px-5">
+        <div className="grid gap-6 border-t border-line bg-surface-2/40 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3 sm:px-5">
           <Block title="Fuentes" count={sources.length} empty="Ninguna todavía. Sube un video o añade una URL.">
             {sources.map((source) => (
               <li key={source.id} className="flex items-center gap-3 py-2">
@@ -232,6 +291,8 @@ const EpisodeRow = ({
               </li>
             ))}
           </Block>
+
+          {published && <AudioBlock episodeId={episode.id} version={upload?.id ? `${upload.id}-${upload.status}` : ''} />}
 
           <Block title="Subtítulos" count={subtitles.length} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
             {subtitles.map((subtitle) => (
