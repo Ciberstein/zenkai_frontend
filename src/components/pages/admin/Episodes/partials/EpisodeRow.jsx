@@ -3,11 +3,9 @@ import clsx from 'clsx'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Button } from '../../../../material'
 import Icon from '../../../../shared/Icon'
-import segmentsApi from '../../../../../services/segments.services'
-import uploads from '../../../../../services/uploads.services'
-import { languageName } from '../../../../../utils/player.util'
 import { UPLOAD_BUSY, latestUpload } from '../../../../../utils/upload.util'
-import { SEGMENT_TYPES, clock } from '../../../../../utils/segment.util'
+import EpisodeDetails from './EpisodeDetails'
+import useAudio from './useAudio'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -36,188 +34,6 @@ const metaOf = (episode) => [
   episode.recap ? 'Recap' : null,
   episode.visible === false ? 'Oculto' : null,
 ].filter(Boolean).join(' · ');
-
-// ─── Piezas ───────────────────────────────────────────────────────────────────
-
-const RemoveButton = ({ label, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    aria-label={label}
-    title={label}
-    className="grid size-8 shrink-0 cursor-pointer place-items-center text-muted transition-colors hover:bg-red-500/15 hover:text-red-400"
-  >
-    <Icon name="x" className="size-4" />
-  </button>
-)
-
-// Una lista del panel desplegado: cabecera con el recuento y filas separadas por una linea.
-const Block = ({ title, count, empty, children }) => (
-  <section>
-    <h3 className="mb-1 flex items-baseline gap-2 font-mono text-[11px] font-normal uppercase tracking-[0.18em] text-muted">
-      {title}
-      <span className="tnum text-fg/60">{count}</span>
-    </h3>
-
-    {count ? <ul className="divide-y divide-line">{children}</ul> : <p className="py-2 text-sm text-muted">{empty}</p>}
-  </section>
-)
-
-// Audios del episodio, leidos del manifiesto publicado. Se vuelven a leer cuando cambia la
-// ultima subida (por ejemplo, al terminar de añadir un doblaje).
-const useAudio = (episodeId, enabled, version) => {
-
-  const [tracks, setTracks] = React.useState(null);
-  const [error, setError] = React.useState(null);
-
-  const load = React.useCallback(() => {
-    if (!enabled) return;
-
-    uploads.audio(episodeId)
-      .then((list) => { setTracks(list); setError(null); })
-      .catch((err) => setError(err.response?.data?.message ?? err.message));
-  }, [episodeId, enabled]);
-
-  React.useEffect(() => { load() }, [load, version]);
-
-  return { tracks, error, setError, load };
-}
-
-const AudioBlock = ({ episodeId, tracks, error, setError, load }) => {
-
-  const makeDefault = async (track) => {
-    try {
-      await uploads.defaultAudio(episodeId, track.dir);
-      load();
-    } catch (err) {
-      setError(err.response?.data?.message ?? err.message);
-    }
-  };
-
-  const remove = async (track) => {
-    const name = languageName(track.lang, track.lang ?? track.dir);
-    if (!window.confirm(`¿Quitar el audio "${name}" (${track.dir}) del episodio? Se borra también del bucket.`)) return;
-
-    try {
-      await uploads.removeAudio(episodeId, track.dir);
-      load();
-    } catch (err) {
-      setError(err.response?.data?.message ?? err.message);
-    }
-  };
-
-  return (
-    <section>
-      <h3 className="mb-1 flex items-baseline gap-2 font-mono text-[11px] font-normal uppercase tracking-[0.18em] text-muted">
-        Audios
-        <span className="tnum text-fg/60">{tracks?.length ?? 0}</span>
-      </h3>
-
-      {error && <p className="py-2 text-sm text-red-400">{error}</p>}
-
-      {tracks && (
-        <ul className="divide-y divide-line">
-          {tracks.map((track) => (
-            <li key={track.dir} className="flex items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{languageName(track.lang, track.lang ?? track.dir)}</p>
-                <p className={clsx('truncate text-muted', MONO)}>
-                  {track.dir}
-                  {track.default && <span className="text-accent-text"> · por defecto</span>}
-                </p>
-              </div>
-
-              {!track.default && (
-                <button
-                  type="button"
-                  onClick={() => makeDefault(track)}
-                  className={clsx('shrink-0 cursor-pointer px-2 py-1 text-muted transition-colors hover:bg-surface-2 hover:text-fg', MONO)}
-                >
-                  Predeterminado
-                </button>
-              )}
-
-              {tracks.length > 1 && <RemoveButton label={`Quitar el audio ${track.dir}`} onClick={() => remove(track)} />}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
-
-// Marcas del episodio (intro, créditos, resumen) con su origen. Se pueden buscar en AniSkip,
-// poner a mano o quitar.
-const SegmentBlock = ({ episode, onSegment, onChanged }) => {
-
-  const [message, setMessage] = React.useState(null);
-  const [searching, setSearching] = React.useState(false);
-
-  const segments = episode.segments ?? [];
-
-  const search = async () => {
-    setSearching(true);
-    setMessage(null);
-
-    try {
-      const result = await segmentsApi.search(episode.id);
-
-      setMessage(result.found ? `AniSkip: ${result.saved} nueva(s)${result.kept ? `, ${result.kept} manual(es) intacta(s)` : ''}` : 'Sin datos en AniSkip para este episodio');
-      onChanged();
-    } catch (err) {
-      setMessage(err.response?.data?.message ?? err.message);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const remove = async (segment) => {
-    await segmentsApi.remove(episode.id, segment.type);
-    onChanged();
-  };
-
-  return (
-    <section>
-      <h3 className="mb-1 flex items-baseline gap-2 font-mono text-[11px] font-normal uppercase tracking-[0.18em] text-muted">
-        Marcas
-        <span className="tnum text-fg/60">{segments.length}</span>
-
-        <span className="ml-auto flex gap-1">
-          <button type="button" disabled={searching} onClick={search} className="cursor-pointer px-2 py-0.5 normal-case tracking-normal text-accent-text hover:bg-surface-2 disabled:opacity-50">
-            {searching ? 'Buscando…' : 'Buscar en AniSkip'}
-          </button>
-          <button type="button" onClick={() => onSegment(episode, null)} className="cursor-pointer px-2 py-0.5 normal-case tracking-normal text-accent-text hover:bg-surface-2">
-            + Añadir
-          </button>
-        </span>
-      </h3>
-
-      {message && <p className="py-1 text-xs text-muted">{message}</p>}
-
-      {segments.length ? (
-        <ul className="divide-y divide-line">
-          {segments.map((segment) => (
-            <li key={segment.id} className="flex items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{SEGMENT_TYPES.find((item) => item.value === segment.type)?.label ?? segment.type}</p>
-                <p className={clsx('truncate text-muted', MONO)}>
-                  {clock(segment.start)} – {clock(segment.end)} · {segment.source === 'manual' ? 'manual' : segment.source === 'aniskip' ? 'AniSkip' : segment.source}
-                </p>
-              </div>
-
-              <button type="button" onClick={() => onSegment(episode, segment)} className={clsx('shrink-0 cursor-pointer px-2 py-1 text-muted transition-colors hover:bg-surface-2 hover:text-fg', MONO)}>
-                Editar
-              </button>
-              <RemoveButton label={`Quitar la marca ${segment.type}`} onClick={() => remove(segment)} />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="py-2 text-sm text-muted">Ninguna. Búscalas en AniSkip o añádelas a mano.</p>
-      )}
-    </section>
-  )
-}
 
 // ─── EpisodeRow ───────────────────────────────────────────────────────────────
 
@@ -380,42 +196,15 @@ const EpisodeRow = ({
       </div>
 
       {open && (
-        <div className="grid gap-6 border-t border-line bg-surface-2/40 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4 sm:px-5">
-          <Block title="Fuentes" count={sources.length} empty="Ninguna todavía. Sube un video o añade una URL.">
-            {sources.map((source) => (
-              <li key={source.id} className="flex items-center gap-3 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{source.server}</p>
-                  <p className={clsx('truncate text-muted', MONO)}>
-                    {source.type} · {source.quality} · {source.language === 'dub' ? 'Doblado' : 'Subtitulado'}
-                  </p>
-                </div>
-
-                <RemoveButton label={`Quitar la fuente ${source.server}`} onClick={() => onRemoveSource(source.id)} />
-              </li>
-            ))}
-          </Block>
-
-          {published && <AudioBlock episodeId={episode.id} {...audio} />}
-
-          {available && <SegmentBlock episode={episode} onSegment={onSegment} onChanged={onChanged} />}
-
-          <Block title="Subtítulos" count={subtitles.length} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
-            {subtitles.map((subtitle) => (
-              <li key={subtitle.id} className="flex items-center gap-3 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{subtitle.label}</p>
-                  <p className={clsx('truncate text-muted', MONO)}>
-                    {subtitle.language}
-                    {subtitle.default && <span className="text-accent-text"> · por defecto</span>}
-                  </p>
-                </div>
-
-                <RemoveButton label={`Quitar los subtítulos ${subtitle.label}`} onClick={() => onRemoveSubtitle(subtitle.id)} />
-              </li>
-            ))}
-          </Block>
-        </div>
+        <EpisodeDetails
+          episode={episode}
+          published={published}
+          audio={audio}
+          onSegment={onSegment}
+          onChanged={onChanged}
+          onRemoveSource={onRemoveSource}
+          onRemoveSubtitle={onRemoveSubtitle}
+        />
       )}
     </li>
   )
