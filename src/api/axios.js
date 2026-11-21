@@ -30,7 +30,11 @@ api.interceptors.response.use(
       return Promise.reject(err);
     }
 
-    if (status === 401 && !originalRequest._retry) {
+    // Un 401 de login / registro / verificación es una respuesta normal (credenciales o código
+    // incorrectos), no una sesión caducada: no hay nada que refrescar ni que recargar.
+    const isAuthCall = /\/auth\/(login|register|verify|recovery|refresh|logout)/.test(originalRequest?.url ?? '');
+
+    if (status === 401 && !isAuthCall && !originalRequest._retry) {
       originalRequest._retry = true;
 
       if (isRefreshing) return enqueueRequest(originalRequest);

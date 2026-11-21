@@ -37,6 +37,16 @@ const register = async (credentials) => {
   return await api.post(url, credentials);
 };
 
-const auth = { disconnect, refresh, validate, login, register };
+// Confirma el correo con el código recibido y abre la sesión.
+const verify = async (data) => await api.post('/api/v1/auth/verify', data);
+
+const resend = async (email) => await api.post('/api/v1/auth/verify/resend', { email });
+
+// Recuperar la contraseña: pedir el código por correo y cambiarla con él.
+const recover = async (email) => await api.post('/api/v1/auth/recovery', { email });
+
+const reset = async (data) => await api.post('/api/v1/auth/recovery/reset', data);
+
+const auth = { disconnect, refresh, validate, login, register, verify, resend, recover, reset };
 
 export default auth;

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Input } from '../../../../material'
 import auth_service from '../../../../../services/auth.services'
 
-const RegisterForm = () => {
+const RegisterForm = ({ onPending }) => {
 
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm();
   const [error, setError] = React.useState(null);
@@ -17,8 +17,11 @@ const RegisterForm = () => {
     setError(null);
 
     try {
-      await auth_service.register({ email, username, password });
-      window.location.assign('/');
+      const res = await auth_service.register({ email, username, password });
+
+      // Con verificación por correo, la cuenta aún no tiene sesión: toca poner el código.
+      if (res.data?.verify) onPending({ email: res.data.email, sent: res.data.sent, wait: res.data.wait });
+      else window.location.assign('/');
     } catch (err) {
       setError(err.response?.data?.message ?? 'No se pudo crear la cuenta');
     }

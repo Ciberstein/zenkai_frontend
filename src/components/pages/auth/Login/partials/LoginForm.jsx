@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Input } from '../../../../material'
 import auth_service from '../../../../../services/auth.services'
 
-const LoginForm = () => {
+const LoginForm = ({ onPending, notice = null }) => {
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
   const [error, setError] = React.useState(null);
@@ -20,12 +20,24 @@ const LoginForm = () => {
       // al montar, asi queda consistente en todo el arbol.
       window.location.assign('/');
     } catch (err) {
-      setError(err.response?.data?.message ?? 'No se pudo iniciar sesión');
+      const data = err.response?.data;
+
+      // Credenciales correctas pero el correo sin verificar: el servidor ya envió un código nuevo.
+      if (err.response?.status === 403 && data?.verify) {
+        onPending({ email: data.email, sent: data.sent, wait: data.wait });
+        return;
+      }
+
+      setError(data?.message ?? 'No se pudo iniciar sesión');
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      {notice && !error && (
+        <p role="status" className="border border-line bg-surface px-4 py-3 text-sm text-fg">{notice}</p>
+      )}
+
       {error && (
         <p role="alert" className="border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400">
           {error}

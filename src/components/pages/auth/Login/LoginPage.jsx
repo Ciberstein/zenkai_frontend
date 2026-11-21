@@ -1,12 +1,21 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import AuthShell from '../AuthShell'
+import VerifyForm from '../VerifyForm'
 import LoginForm from './partials/LoginForm'
 
-export const LoginPage = () => (
+export const LoginPage = () => {
+
+  // Una cuenta que nunca confirmó el correo recibe un código nuevo y continúa desde aquí.
+  const [pending, setPending] = React.useState(null);
+
+  // Mensaje que deja otra pantalla al venir aquí (p. ej. «Contraseña actualizada»).
+  const notice = useLocation().state?.notice ?? null;
+
+  return (
   <AuthShell
-    title="Iniciar sesión"
-    subtitle="Continúa donde lo dejaste."
+    title={pending ? 'Verifica tu correo' : 'Iniciar sesión'}
+    subtitle={pending ? <>Te enviamos un código de 6 dígitos a <strong className="text-fg">{pending.email}</strong>.</> : 'Continúa donde lo dejaste.'}
     footer={
       <>
         ¿No tienes cuenta?{' '}
@@ -16,6 +25,9 @@ export const LoginPage = () => (
       </>
     }
   >
-    <LoginForm />
+    {pending
+      ? <VerifyForm {...pending} onBack={() => setPending(null)} />
+      : <LoginForm onPending={setPending} notice={notice} />}
   </AuthShell>
-)
+  )
+}

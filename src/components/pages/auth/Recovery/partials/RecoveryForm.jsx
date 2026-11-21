@@ -1,19 +1,32 @@
 import React from 'react'
 import { useForm } from 'react-hook-form'
 import { Button, Input } from '../../../../material'
+import auth_service from '../../../../../services/auth.services'
+import { spanish } from '../../../../../utils/auth.util'
 
-// El endpoint de recuperacion aun no existe en el backend (necesita el servicio
-// de correo). El formulario ya valida y deja el hueco listo.
-const RecoveryForm = () => {
+// Paso 1 de la recuperación: el correo. El servidor responde igual exista o no la cuenta, así
+// que siempre se pasa al paso del código (no se revela quién está registrado).
+const RecoveryForm = ({ onSent }) => {
 
-  const { register, handleSubmit, formState: { errors } } = useForm();
-  const [sent, setSent] = React.useState(false);
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
+  const [error, setError] = React.useState(null);
+
+  const onSubmit = async ({ email }) => {
+    setError(null);
+
+    try {
+      const res = await auth_service.recover(email.trim().toLowerCase());
+      onSent({ email: email.trim().toLowerCase(), wait: res.data?.wait ?? 0 });
+    } catch (err) {
+      setError(spanish(err.response?.data?.message, 'No se pudo enviar el código'));
+    }
+  };
 
   return (
-    <form onSubmit={handleSubmit(() => setSent(true))} className="flex flex-col gap-4">
-      {sent && (
-        <p role="status" className="border border-line bg-accent/20 px-3 py-2 text-sm font-bold">
-          Si el email existe, recibirás instrucciones.
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      {error && (
+        <p role="alert" className="border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400">
+          {error}
         </p>
       )}
 
@@ -33,7 +46,7 @@ const RecoveryForm = () => {
         }}
       />
 
-      <Button full size="lg" type="submit">Enviar</Button>
+      <Button full size="lg" type="submit" loading={isSubmitting}>Enviar código</Button>
     </form>
   )
 }
