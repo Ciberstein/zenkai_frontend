@@ -4,7 +4,9 @@ import { useDispatch, useSelector } from 'react-redux'
 import { setProfile } from '../../../../../store/slices/account.slice'
 import { API_ROUTES } from '../../../../../api/routes'
 import api from '../../../../../api/axios'
+import { clearPrefs } from '../../../../../utils/player.util'
 import { Button, Input, Select, Textarea } from '../../../../material'
+import AvatarUploader from './AvatarUploader'
 
 const ProfileForm = () => {
 
@@ -21,8 +23,11 @@ const ProfileForm = () => {
 
   const field = (rules = {}) => ({ function: register, errors: { function: errors, rules } });
 
-  const onSubmit = async ({ nickname, bio, avatar }) => {
-    const res = await api.patch(`${API_ROUTES.USER}/profile`, { nickname, bio, avatar, language });
+  const onSubmit = async ({ nickname, bio }) => {
+    const res = await api.patch(`${API_ROUTES.USER}/profile`, { nickname, bio, language });
+
+    // Si cambió el idioma, lo elegido a mano en el reproductor se olvida: el nuevo se nota ya.
+    if (language !== account?.profile?.language) clearPrefs(['audio', 'captions']);
     dispatch(setProfile(res.data));
     reset(res.data);
     setSaved(true);
@@ -36,8 +41,9 @@ const ProfileForm = () => {
         </p>
       )}
 
+      <AvatarUploader />
+
       <Input full name="nickname" label="Nombre público" register={field()} />
-      <Input full name="avatar" label="Avatar (URL)" register={field()} />
       <Textarea full name="bio" label="Bio" register={field()} />
 
       <Select
