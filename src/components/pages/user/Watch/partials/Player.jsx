@@ -370,6 +370,7 @@ const Player = ({
           onCaption={chooseCaption}
           onPrev={onPrev}
           onNext={onNext}
+          segments={episode.segments ?? []}
           sources={sources}
           source={source}
           onSource={onSource}

@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { API_ROUTES } from '../../../../api/routes'
 import api from '../../../../api/axios'
 import uploads from '../../../../services/uploads.services'
+import segmentsApi from '../../../../services/segments.services'
 import { UPLOAD_BUSY, latestUpload } from '../../../../utils/upload.util'
 import { Button } from '../../../material'
 import Icon from '../../../shared/Icon'
@@ -11,6 +12,7 @@ import NoData from '../../../shared/NoData'
 import EpisodeRow from './partials/EpisodeRow'
 import SourceDialog from './partials/SourceDialog'
 import AudioDialog from './partials/AudioDialog'
+import SegmentDialog from './partials/SegmentDialog'
 import SubtitleDialog from './partials/SubtitleDialog'
 import UploadDialog from './partials/UploadDialog'
 
@@ -31,6 +33,8 @@ export const EpisodesPage = () => {
   const [selected, setSelected] = React.useState(null);
   const [subtitling, setSubtitling] = React.useState(null);
   const [dubbing, setDubbing] = React.useState(null);
+  const [marking, setMarking] = React.useState(null);   // { episode, segment }
+  const [searching, setSearching] = React.useState(false);
   const [uploading, setUploading] = React.useState(null);
   const [dropped, setDropped] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
@@ -62,6 +66,24 @@ export const EpisodesPage = () => {
     setSyncing(false);
     load();
   };
+
+  // Busca en AniSkip las marcas de todos los episodios: va por detrás, así que se refresca la lista
+  // unas veces para ir viendo aparecer lo que encuentra.
+  const searchSegments = async () => {
+    setSearching(true);
+
+    try {
+      await segmentsApi.searchAnime(id);
+      for (let i = 0; i < 6; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await load();
+      }
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const openSegment = React.useCallback((episode, segment) => setMarking({ episode, segment }), []);
 
   // Estables a proposito: las filas estan memorizadas y no deben repintarse todas por cada refresco.
   const toggle = React.useCallback((episodeId) => {
@@ -129,7 +151,10 @@ export const EpisodesPage = () => {
           </p>
         </div>
 
-        <Button size="sm" loading={syncing} onClick={sync}>↻ Sincronizar</Button>
+        <div className="flex gap-2">
+          <Button color="ghost" size="sm" loading={searching} disabled={!withVideo} onClick={searchSegments}>Buscar marcas</Button>
+          <Button size="sm" loading={syncing} onClick={sync}>↻ Sincronizar</Button>
+        </div>
       </header>
 
       {episodes.length > 0 && (
@@ -166,6 +191,8 @@ export const EpisodesPage = () => {
                 onSource={setSelected}
                 onSubtitle={setSubtitling}
                 onAudio={setDubbing}
+                onSegment={openSegment}
+                onChanged={load}
                 onRemoveSource={removeSource}
                 onRemoveSubtitle={removeSubtitle}
                 onRetry={retryUpload}
@@ -191,6 +218,17 @@ export const EpisodesPage = () => {
           initialFiles={dropped}
           onClose={() => { setUploading(null); setDropped(null); }}
           onDone={load}
+        />
+      )}
+
+      {marking && (
+        <SegmentDialog
+          key={`${marking.episode.id}-${marking.segment?.type ?? 'new'}`}
+          episode={marking.episode}
+          segment={marking.segment}
+          open
+          onClose={() => setMarking(null)}
+          onSaved={load}
         />
       )}
 

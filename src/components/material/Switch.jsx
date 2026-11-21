@@ -22,8 +22,8 @@ export const Switch = ({ checked = false, onChange = () => {}, label = null, cla
     >
       <span
         className={clsx(
- 'absolute top-[3px] size-4 bg-white shadow-sm transition-[left] duration-200 ease-out',
-          checked ? 'left-[22px]' : 'left-[3px]',
+ 'absolute top-0.75 size-4 bg-white shadow-sm transition-[left] duration-200 ease-out',
+          checked ? 'left-5.5' : 'left-0.75',
         )}
       />
     </span>

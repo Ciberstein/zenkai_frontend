@@ -14,6 +14,11 @@ const NEXT_MIN_LENGTH = 180;     // y solo en videos de mas de 3 minutos
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
+// Boton que ofrece cada tipo de segmento. En los creditos, si hay episodio siguiente, el boton
+// es el de pasar a el.
+const SKIP_LABEL = { intro: 'Saltar intro', recap: 'Saltar resumen', outro: 'Saltar créditos' };
+const AUTO_SKIP_MAX_IN = 1.5;    // la salto sola solo si la reproduccion llega al inicio del tramo, no si se entra a mitad
+
 // ─── Piezas ───────────────────────────────────────────────────────────────────
 
 export const IconButton = ({ label, active = false, box = 'size-10', className = '', children, ...props }) => (
@@ -80,6 +85,7 @@ const PlayerControls = ({
   audio, levels, captions, caption,
   onAudio, onLevel, onCaption,
   onPrev, onNext,
+  segments = [],
   sources = [], source = null, onSource = () => {},
 }) => {
 
@@ -100,6 +106,8 @@ const PlayerControls = ({
   const [cue, setCue] = React.useState([]);            // lineas del subtitulo activo
   const [stageHeight, setStageHeight] = React.useState(400);
   const [nearEnd, setNearEnd] = React.useState(false);
+  const [active, setActive] = React.useState(null);    // segmento (intro/outro/recap) en curso
+  const [autoSkip, setAutoSkip] = React.useState(() => readPrefs().autoSkip === true);
 
   const track = React.useRef(null);
   const fill = React.useRef(null);
@@ -114,6 +122,12 @@ const PlayerControls = ({
   const pointerType = React.useRef('mouse');
   const lastCaption = React.useRef(null);
   const nearRef = React.useRef(false);
+  const segmentsRef = React.useRef(segments);
+  const activeRef = React.useRef(null);
+  const autoRef = React.useRef(autoSkip);
+  const autoDone = React.useRef(new Set());
+  segmentsRef.current = segments;
+  autoRef.current = autoSkip;
   const visibleRef = React.useRef(true);   // si los controles se veian justo antes del toque
   const wasVisible = React.useRef(true);
 
@@ -142,7 +156,41 @@ const PlayerControls = ({
     // En los ultimos segundos (creditos) aparece el boton de "Siguiente episodio".
     const near = total > NEXT_MIN_LENGTH && total - node.currentTime <= NEXT_PROMPT_SECONDS;
     if (near !== nearRef.current) { nearRef.current = near; setNearEnd(near); }
+
+    // Segmento en curso: el boton "Saltar" vive mientras dure (menos su ultimo instante).
+    const now = node.currentTime;
+    const segment = segmentsRef.current.find((item) => now >= item.start && now < item.end - 0.5) ?? null;
+
+    if ((segment?.type ?? null) !== (activeRef.current?.type ?? null)) { activeRef.current = segment; setActive(segment); }
+
+    // Con "saltar automaticamente" la intro y el resumen se saltan solos, una vez por episodio.
+    if (segment && segment.type !== 'outro' && autoRef.current && scrubbing.current === null
+      && now - segment.start < AUTO_SKIP_MAX_IN && !autoDone.current.has(segment.type)) {
+      autoDone.current.add(segment.type);
+      node.currentTime = segment.end;
+    }
   }, [video]);
+
+  // Otro episodio: los tramos y lo ya saltado empiezan de cero.
+  React.useEffect(() => {
+    autoDone.current = new Set();
+    activeRef.current = null;
+    setActive(null);
+  }, [mediaKey]);
+
+  const skipSegment = React.useCallback(() => {
+    const node = video.current;
+    if (!node || !activeRef.current) return;
+
+    const { end } = activeRef.current;
+    node.currentTime = Number.isFinite(node.duration) ? Math.min(end, node.duration) : end;
+  }, [video]);
+
+  const toggleAutoSkip = () => {
+    const next = !autoSkip;
+    setAutoSkip(next);
+    savePref('autoSkip', next);
+  };
 
   // ── Escucha del <video> ────────────────────────────────────────────────────
 
@@ -530,7 +578,7 @@ const PlayerControls = ({
       {/* Cargando */}
       {waiting && !ended && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
-          <span className="size-12 animate-spin border-2 border-white/20 border-t-accent" role="status" aria-label="Cargando" />
+          <span className="size-12 animate-spin rounded-full border-2 border-white/20 border-t-accent" role="status" aria-label="Cargando" />
         </div>
       )}
 
@@ -552,8 +600,23 @@ const PlayerControls = ({
       {/* Cabecera: volver a la serie */}
       <PlayerTopBar seriesTitle={seriesTitle} episodeLabel={episodeLabel} onClose={onClose} visible={visible} />
 
+      {/* Saltar intro / resumen / creditos: solo mientras dura el tramo */}
+      {active && (
+        <button
+          type="button"
+          onClick={active.type === 'outro' && onNext ? onNext : skipSegment}
+          className={clsx(
+            'absolute right-4 z-10 flex cursor-pointer items-center gap-2 bg-white/15 px-5 py-3 text-sm font-semibold text-white backdrop-blur-md transition-[bottom,background-color,color] duration-300 hover:bg-accent hover:text-accent-fg sm:right-6',
+            visible ? 'bottom-32 sm:bottom-44' : 'bottom-8',
+          )}
+        >
+          {active.type === 'outro' && onNext ? 'Siguiente episodio' : SKIP_LABEL[active.type]}
+          <Icon name="next" className="size-4" />
+        </button>
+      )}
+
       {/* Siguiente episodio, en los creditos */}
-      {onNext && nearEnd && (
+      {onNext && nearEnd && active?.type !== 'outro' && (
         <button
           type="button"
           onClick={onNext}
@@ -586,7 +649,7 @@ const PlayerControls = ({
       >
         {/* Progreso: lo transcurrido a la izquierda de la barra y lo que falta a la derecha */}
         <div className="flex items-center gap-3 sm:gap-4">
-          <span ref={clock} className="w-[4.5rem] shrink-0 text-left font-mono text-base tabular-nums text-white/90 sm:w-[5.5rem] sm:text-lg">0:00</span>
+          <span ref={clock} className="w-18 shrink-0 text-left font-mono text-base tabular-nums text-white/90 sm:w-22 sm:text-lg">0:00</span>
 
           <div
             ref={track}
@@ -603,8 +666,16 @@ const PlayerControls = ({
             onPointerLeave={() => setHover(null)}
             className="group/seek relative h-6 min-w-0 flex-1 cursor-pointer touch-none"
           >
-            <div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-white/20 transition-[height] duration-150 group-hover/seek:h-[5px]">
+            <div className="absolute inset-x-0 top-1/2 h-0.75 -translate-y-1/2 bg-white/20 transition-[height] duration-150 group-hover/seek:h-1.25">
               <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${buffered * 100}%` }} />
+              {duration > 0 && segments.map((item) => (
+                <div
+                  key={item.type}
+                  aria-hidden="true"
+                  className="absolute inset-y-0 bg-accent/45"
+                  style={{ left: `${(item.start / duration) * 100}%`, width: `${((item.end - item.start) / duration) * 100}%` }}
+                />
+              ))}
               <div ref={fill} className="absolute inset-y-0 left-0 bg-accent shadow-[0_0_10px_var(--accent)]" />
             </div>
 
@@ -623,7 +694,7 @@ const PlayerControls = ({
             )}
           </div>
 
-          <span ref={remaining} className="w-[4.5rem] shrink-0 text-right font-mono text-base tabular-nums text-white/90 sm:w-[5.5rem] sm:text-lg">−0:00</span>
+          <span ref={remaining} className="w-18 shrink-0 text-right font-mono text-base tabular-nums text-white/90 sm:w-22 sm:text-lg">−0:00</span>
         </div>
 
         {/* Botones: el transporte va centrado, con el play en medio */}
@@ -724,6 +795,21 @@ const PlayerControls = ({
                     value={String(levels.current)}
                     onSelect={onLevel}
                   />
+                  {segments.length > 0 && (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={autoSkip}
+                      onClick={toggleAutoSkip}
+                      className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left text-sm text-white/85 transition-colors hover:bg-white/10"
+                    >
+                      Saltar intros automáticamente
+                      <span className={clsx('relative h-4 w-7 shrink-0 transition-colors', autoSkip ? 'bg-accent' : 'bg-white/25')}>
+                        <span className={clsx('absolute top-0.5 size-3 bg-white transition-[left]', autoSkip ? 'left-3.5' : 'left-0.5')} />
+                      </span>
+                    </button>
+                  )}
+
                   <div className="flex flex-col gap-2 px-3 py-3">
                     <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">Velocidad</p>
 

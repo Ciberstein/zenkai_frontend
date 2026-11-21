@@ -70,7 +70,7 @@ export const WatchPage = () => {
         <PlayerTopBar seriesTitle={seriesTitle} onClose={close} />
 
         <div className="absolute inset-0 grid place-items-center">
-          <span className="size-12 animate-spin border-2 border-white/20 border-t-accent" role="status" aria-label="Cargando" />
+          <span className="size-12 animate-spin rounded-full border-2 border-white/20 border-t-accent" role="status" aria-label="Cargando" />
         </div>
       </Stage>
     )

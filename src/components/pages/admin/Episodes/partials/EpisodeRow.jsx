@@ -3,9 +3,11 @@ import clsx from 'clsx'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Button } from '../../../../material'
 import Icon from '../../../../shared/Icon'
+import segmentsApi from '../../../../../services/segments.services'
 import uploads from '../../../../../services/uploads.services'
 import { languageName } from '../../../../../utils/player.util'
 import { UPLOAD_BUSY, latestUpload } from '../../../../../utils/upload.util'
+import { SEGMENT_TYPES, clock } from '../../../../../utils/segment.util'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -144,6 +146,79 @@ const AudioBlock = ({ episodeId, tracks, error, setError, load }) => {
   )
 }
 
+// Marcas del episodio (intro, créditos, resumen) con su origen. Se pueden buscar en AniSkip,
+// poner a mano o quitar.
+const SegmentBlock = ({ episode, onSegment, onChanged }) => {
+
+  const [message, setMessage] = React.useState(null);
+  const [searching, setSearching] = React.useState(false);
+
+  const segments = episode.segments ?? [];
+
+  const search = async () => {
+    setSearching(true);
+    setMessage(null);
+
+    try {
+      const result = await segmentsApi.search(episode.id);
+
+      setMessage(result.found ? `AniSkip: ${result.saved} nueva(s)${result.kept ? `, ${result.kept} manual(es) intacta(s)` : ''}` : 'Sin datos en AniSkip para este episodio');
+      onChanged();
+    } catch (err) {
+      setMessage(err.response?.data?.message ?? err.message);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const remove = async (segment) => {
+    await segmentsApi.remove(episode.id, segment.type);
+    onChanged();
+  };
+
+  return (
+    <section>
+      <h3 className="mb-1 flex items-baseline gap-2 font-mono text-[11px] font-normal uppercase tracking-[0.18em] text-muted">
+        Marcas
+        <span className="tnum text-fg/60">{segments.length}</span>
+
+        <span className="ml-auto flex gap-1">
+          <button type="button" disabled={searching} onClick={search} className="cursor-pointer px-2 py-0.5 normal-case tracking-normal text-accent-text hover:bg-surface-2 disabled:opacity-50">
+            {searching ? 'Buscando…' : 'Buscar en AniSkip'}
+          </button>
+          <button type="button" onClick={() => onSegment(episode, null)} className="cursor-pointer px-2 py-0.5 normal-case tracking-normal text-accent-text hover:bg-surface-2">
+            + Añadir
+          </button>
+        </span>
+      </h3>
+
+      {message && <p className="py-1 text-xs text-muted">{message}</p>}
+
+      {segments.length ? (
+        <ul className="divide-y divide-line">
+          {segments.map((segment) => (
+            <li key={segment.id} className="flex items-center gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{SEGMENT_TYPES.find((item) => item.value === segment.type)?.label ?? segment.type}</p>
+                <p className={clsx('truncate text-muted', MONO)}>
+                  {clock(segment.start)} – {clock(segment.end)} · {segment.source === 'manual' ? 'manual' : segment.source === 'aniskip' ? 'AniSkip' : segment.source}
+                </p>
+              </div>
+
+              <button type="button" onClick={() => onSegment(episode, segment)} className={clsx('shrink-0 cursor-pointer px-2 py-1 text-muted transition-colors hover:bg-surface-2 hover:text-fg', MONO)}>
+                Editar
+              </button>
+              <RemoveButton label={`Quitar la marca ${segment.type}`} onClick={() => remove(segment)} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="py-2 text-sm text-muted">Ninguna. Búscalas en AniSkip o añádelas a mano.</p>
+      )}
+    </section>
+  )
+}
+
 // ─── EpisodeRow ───────────────────────────────────────────────────────────────
 
 // Una fila limpia por episodio: numero, titulo con sus datos, estado y acciones. Lo que
@@ -151,7 +226,7 @@ const AudioBlock = ({ episodeId, tracks, error, setError, load }) => {
 // que se despliega, asi la lista se lee de un vistazo aunque haya cientos de episodios.
 const EpisodeRow = ({
   episode, open, onToggle,
-  onUpload, onSource, onSubtitle, onAudio,
+  onUpload, onSource, onSubtitle, onAudio, onSegment, onChanged,
   onRemoveSource, onRemoveSubtitle,
   onRetry, onDiscard,
 }) => {
@@ -214,7 +289,7 @@ const EpisodeRow = ({
               failed ? 'border-red-500/40 bg-red-500/10 text-red-400' : 'border-accent/40 bg-accent/10 text-accent-text',
             )}
           >
-            {busy && <span aria-hidden="true" className="size-3 animate-spin border-2 border-accent/30 border-t-accent" />}
+            {busy && <span aria-hidden="true" className="size-3 animate-spin rounded-full border-2 border-accent/30 border-t-accent" />}
             {UPLOAD_LABEL[upload.status]}
           </span>
         ) : (
@@ -305,7 +380,7 @@ const EpisodeRow = ({
       </div>
 
       {open && (
-        <div className="grid gap-6 border-t border-line bg-surface-2/40 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3 sm:px-5">
+        <div className="grid gap-6 border-t border-line bg-surface-2/40 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4 sm:px-5">
           <Block title="Fuentes" count={sources.length} empty="Ninguna todavía. Sube un video o añade una URL.">
             {sources.map((source) => (
               <li key={source.id} className="flex items-center gap-3 py-2">
@@ -322,6 +397,8 @@ const EpisodeRow = ({
           </Block>
 
           {published && <AudioBlock episodeId={episode.id} {...audio} />}
+
+          {available && <SegmentBlock episode={episode} onSegment={onSegment} onChanged={onChanged} />}
 
           <Block title="Subtítulos" count={subtitles.length} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
             {subtitles.map((subtitle) => (
