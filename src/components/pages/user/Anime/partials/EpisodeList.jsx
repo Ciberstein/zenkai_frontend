@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
+import { Context } from '../../../../../context'
 import Icon from '../../../../shared/Icon'
 import { Button } from '../../../../material'
 import { image } from '../../../../../utils/anime.util'
@@ -32,6 +33,7 @@ const formatDate = (iso) => {
 const EpisodeCard = ({ malId, episode, fallback }) => {
 
   const { t } = useTranslation();
+  const { auth } = React.useContext(Context.Auth);
 
   const history = episode.history;
   const played = percent(history?.progress, history?.duration);
@@ -88,8 +90,8 @@ const EpisodeCard = ({ malId, episode, fallback }) => {
 
           {/* Al pasar el cursor asoma la accion, sin mover nada de sitio */}
           <span className="absolute inset-0 grid place-items-center bg-black/35 opacity-0 transition-opacity duration-300 group-hover/ep:opacity-100 group-focus-visible/ep:opacity-100">
-            <span className="cut grid size-14 place-items-center bg-accent text-accent-fg">
-              <Icon name="play" className="ml-0.5 size-6" />
+            <span className="cut grid size-14 place-items-center bg-accent text-accent-fg" title={auth ? undefined : 'Inicia sesión para ver'}>
+              <Icon name={auth ? 'play' : 'lock'} className={auth ? 'ml-0.5 size-6' : 'size-6'} />
             </span>
           </span>
 

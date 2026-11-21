@@ -36,6 +36,7 @@ const PATHS = {
   logout: <path d="M14 4.5h4.5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H14M10 8l-4 4 4 4M6 12h9.5" />,
   shield: <path d="M12 3.5 5 6v5.5c0 4.2 2.9 7.6 7 9 4.1-1.4 7-4.8 7-9V6l-7-2.5Z" />,
   x: <path d="M6 6l12 12M18 6 6 18" />,
+  lock: <><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></>,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
 };
 

@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { Context } from '../../../../context'
+import { image } from '../../../../utils/anime.util'
 import { animeThunk } from '../../../../store/slices/anime.slice'
 import { episodesThunk, episodeThunk } from '../../../../store/slices/episodes.slice'
+import LoginGate from './partials/LoginGate'
 import Player from './partials/Player'
 import PlayerTopBar from './partials/PlayerTopBar'
 
@@ -63,6 +65,24 @@ export const WatchPage = () => {
     if (auth) await dispatch(episodesThunk(malId));
     if (config?.['player_auto_next'] && next) navigate(`/watch/${malId}/${next.number}`);
   };
+
+  // La web es pública pero el reproductor no: sin sesión (o si el servidor marca el episodio como
+  // bloqueado) se invita a entrar, con la miniatura del episodio de fondo.
+  if (!auth || episode?.locked) {
+    const cover = anime?.mal_id === Number(malId) ? (anime.banner ?? image(anime)) : null;
+    const thumb = episode?.thumbnail ?? episodes.find((item) => item.number === Number(number))?.thumbnail ?? cover;
+
+    return (
+      <Stage>
+        <LoginGate
+          seriesTitle={seriesTitle}
+          episodeLabel={`${t('Episode')} ${number}`}
+          background={thumb}
+          onClose={close}
+        />
+      </Stage>
+    )
+  }
 
   if (!episode) {
     return (

@@ -606,7 +606,7 @@ const PlayerControls = ({
           type="button"
           onClick={active.type === 'outro' && onNext ? onNext : skipSegment}
           className={clsx(
-            'absolute right-4 z-10 flex cursor-pointer items-center gap-2 bg-white/15 px-5 py-3 text-sm font-semibold text-white backdrop-blur-md transition-[bottom,background-color,color] duration-300 hover:bg-accent hover:text-accent-fg sm:right-6',
+            'cut cut-focus absolute right-4 z-10 flex cursor-pointer items-center gap-2 bg-white/15 px-5 py-3 font-display text-sm font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md transition-[bottom,background-color,color] duration-300 hover:bg-accent hover:text-accent-fg sm:right-6',
             visible ? 'bottom-32 sm:bottom-44' : 'bottom-8',
           )}
         >
@@ -621,7 +621,7 @@ const PlayerControls = ({
           type="button"
           onClick={onNext}
           className={clsx(
-            'absolute right-4 z-10 flex cursor-pointer items-center gap-2 bg-white/15 px-5 py-3 text-sm font-semibold text-white backdrop-blur-md transition-[bottom,background-color,color] duration-300 hover:bg-accent hover:text-accent-fg sm:right-6',
+            'cut cut-focus absolute right-4 z-10 flex cursor-pointer items-center gap-2 bg-white/15 px-5 py-3 font-display text-sm font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md transition-[bottom,background-color,color] duration-300 hover:bg-accent hover:text-accent-fg sm:right-6',
             visible ? 'bottom-32 sm:bottom-44' : 'bottom-8',
           )}
         >

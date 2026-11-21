@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { Button } from '../../material'
 import auth_service from '../../../services/auth.services'
 import { spanish } from '../../../utils/auth.util'
+import { takeReturn } from '../../../utils/returnTo'
 
 const LENGTH = 6;
 
@@ -43,7 +44,7 @@ const VerifyForm = ({ email, sent = true, wait = 0, onBack }) => {
     try {
       await auth_service.verify({ email, code: value });
       // Recarga completa, como el login: el contexto de sesión se resuelve al montar.
-      window.location.assign('/');
+      window.location.assign(takeReturn() ?? '/');
     } catch (err) {
       setError(spanish(err.response?.data?.message, 'No se pudo verificar el código'));
       setCode('');

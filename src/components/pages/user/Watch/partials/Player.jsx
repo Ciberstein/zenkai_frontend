@@ -1,7 +1,8 @@
 import React from 'react'
 import Hls from 'hls.js'
+import { useSelector } from 'react-redux'
 import player_service from '../../../../../services/player.services'
-import { languageName, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
+import { languageName, matchLanguage, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
 import Icon from '../../../../shared/Icon'
 import PlayerControls, { IconButton, Section } from './PlayerControls'
 import PlayerTopBar from './PlayerTopBar'
@@ -86,6 +87,12 @@ const Player = ({
   const [hlsCaptions, setHlsCaptions] = React.useState([]);
   const [caption, setCaption] = React.useState('off');
 
+  // Idioma del perfil del usuario: manda al elegir audio y subtítulos. En una ref para que
+  // cambiarlo no reinicie el reproductor a mitad de episodio.
+  const profileLanguage = useSelector((state) => state.account?.profile?.language) ?? null;
+  const profileRef = React.useRef(profileLanguage);
+  profileRef.current = profileLanguage;
+
   const subtitles = React.useMemo(() => episode?.subtitles ?? [], [episode]);
   const isHls = source?.type === 'hls';
 
@@ -154,11 +161,6 @@ const Player = ({
     });
 
     instance.on(Hls.Events.MANIFEST_PARSED, () => {
-      // Audio: el idioma que el usuario eligio la ultima vez, si el manifiesto lo trae.
-      const preferred = readPrefs().audio;
-      const match = preferred ? instance.audioTracks.findIndex((track) => track.lang === preferred) : -1;
-      if (match >= 0) instance.audioTrack = match;
-
       // Una entrada por altura: un manifiesto puede traer varias variantes de la
       // misma resolucion (codecs o tasas distintas) y "1080p" repetido no le dice
       // nada al usuario. Se queda con la de mayor tasa, de mayor a menor.
@@ -178,7 +180,25 @@ const Player = ({
       syncAudio();
     });
 
-    instance.on(Hls.Events.AUDIO_TRACKS_UPDATED, syncAudio);
+    // Audio inicial, por orden: lo que el usuario eligio a mano la ultima vez, el idioma de su
+    // perfil y, si el episodio no trae ninguno de los dos, la pista que el manifiesto marca por
+    // defecto. Se decide aqui y no en MANIFEST_PARSED: hasta que se carga el nivel, hls.js todavia
+    // no expone las pistas (audioTracks esta vacio). Solo la primera vez: despues manda el usuario.
+    let audioChosen = false;
+
+    instance.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+      if (!audioChosen && instance.audioTracks.length) {
+        audioChosen = true;
+
+        for (const wanted of [readPrefs().audio, profileRef.current]) {
+          const match = matchLanguage(instance.audioTracks, wanted);
+
+          if (match >= 0) { if (match !== instance.audioTrack) instance.audioTrack = match; break; }
+        }
+      }
+
+      syncAudio();
+    });
     instance.on(Hls.Events.AUDIO_TRACK_SWITCHED, syncAudio);
 
     instance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
@@ -203,14 +223,22 @@ const Player = ({
 
   // ── Subtitulos ─────────────────────────────────────────────────────────────
 
-  // Al cambiar de episodio: la pista del idioma preferido, o la marcada por
-  // defecto, o ninguna si el usuario los habia apagado.
+  // Al cambiar de episodio: ninguno si el usuario los habia apagado; si no, el idioma que eligio
+  // la ultima vez, el de su perfil y, a falta de ambos, la pista marcada por defecto (o ninguna).
   React.useEffect(() => {
-    const preferred = readPrefs().captions;
+    const chosen = readPrefs().captions;
 
-    if (preferred === 'off') return setCaption('off');
+    if (chosen === 'off') return setCaption('off');
 
-    const match = subtitles.find((track) => track.language === preferred) ?? subtitles.find((track) => track.default);
+    let match = null;
+
+    for (const wanted of [chosen, profileRef.current]) {
+      const index = matchLanguage(subtitles, wanted, (track) => track.language);
+
+      if (index >= 0) { match = subtitles[index]; break; }
+    }
+
+    match ??= subtitles.find((track) => track.default);
     setCaption(match ? `db:${match.id}` : 'off');
   }, [episode?.id, subtitles]);
 

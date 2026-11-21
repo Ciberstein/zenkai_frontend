@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Button, Input } from '../../../../material'
 import auth_service from '../../../../../services/auth.services'
+import { takeReturn } from '../../../../../utils/returnTo'
 
 const RegisterForm = ({ onPending }) => {
 
@@ -21,7 +22,7 @@ const RegisterForm = ({ onPending }) => {
 
       // Con verificación por correo, la cuenta aún no tiene sesión: toca poner el código.
       if (res.data?.verify) onPending({ email: res.data.email, sent: res.data.sent, wait: res.data.wait });
-      else window.location.assign('/');
+      else window.location.assign(takeReturn() ?? '/');
     } catch (err) {
       setError(err.response?.data?.message ?? 'No se pudo crear la cuenta');
     }

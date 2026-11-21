@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Button, Input } from '../../../../material'
 import auth_service from '../../../../../services/auth.services'
+import { takeReturn } from '../../../../../utils/returnTo'
 
 const LoginForm = ({ onPending, notice = null }) => {
 
@@ -18,7 +19,7 @@ const LoginForm = ({ onPending, notice = null }) => {
       await auth_service.login(credentials);
       // Recarga completa en vez de navigate: el contexto de sesion se resuelve
       // al montar, asi queda consistente en todo el arbol.
-      window.location.assign('/');
+      window.location.assign(takeReturn() ?? '/');
     } catch (err) {
       const data = err.response?.data;
 
