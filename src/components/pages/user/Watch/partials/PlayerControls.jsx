@@ -407,6 +407,25 @@ const PlayerControls = ({
     else node.requestPictureInPicture().catch(() => {});
   };
 
+  // Lo que hace el boton de saltar: pasar al siguiente episodio en los creditos, o saltar el tramo.
+  const activate = () => (active?.type === 'outro' && onNext ? onNext() : skipSegment());
+
+  const cycleAudio = () => {
+    const tracks = audio.tracks;
+    const next = tracks[(tracks.findIndex((track) => track.key === audio.current) + 1) % tracks.length];
+
+    onAudio(next.key);
+    announce(`Audio: ${next.label}`);
+  };
+
+  const stepSpeed = (direction) => {
+    const index = RATES.indexOf(rate);
+    const next = RATES[clamp((index < 0 ? RATES.indexOf(1) : index) + direction, 0, RATES.length - 1)];
+
+    setSpeed(next);
+    announce(`Velocidad ${next}×`);
+  };
+
   const toggleCaptions = () => {
     if (caption !== 'off') {
       lastCaption.current = caption;
@@ -481,6 +500,13 @@ const PlayerControls = ({
         case 'f': toggleFullscreen(); break;
         case 'i': if (canPip) togglePip(); else handled = false; break;
         case 'c': toggleCaptions(); break;
+        case 'a': if (audio.tracks.length > 1) cycleAudio(); else handled = false; break;
+        case 's': if (active) activate(); else handled = false; break;
+        case 'o': toggleAutoSkip(); announce(autoSkip ? 'Salto automático desactivado' : 'Salto automático activado'); break;
+        case '<': stepSpeed(-1); break;
+        case '>': stepSpeed(1); break;
+        case 'Home': seekTo(0); break;
+        case 'End': if (node && Number.isFinite(node.duration)) seekTo(node.duration); else handled = false; break;
         case 'n': if (onNext) onNext(); else handled = false; break;
         case 'p': if (onPrev) onPrev(); else handled = false; break;
         case 'Escape': if (menu) setMenu(null); else handled = false; break;
@@ -635,7 +661,8 @@ const PlayerControls = ({
       {active && (
         <button
           type="button"
-          onClick={active.type === 'outro' && onNext ? onNext : skipSegment}
+          onClick={activate}
+          title="Saltar (s)"
           className={clsx(
             'cut cut-focus absolute right-4 z-10 flex cursor-pointer items-center gap-2 bg-white/15 px-5 py-3 font-display text-sm font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md transition-[bottom,background-color,color] duration-300 hover:bg-accent hover:text-accent-fg sm:right-6',
             visible ? 'bottom-32 sm:bottom-44' : 'bottom-8',
@@ -651,6 +678,7 @@ const PlayerControls = ({
         <button
           type="button"
           onClick={onNext}
+          title="Siguiente episodio (n)"
           className={clsx(
             'cut cut-focus absolute right-4 z-10 flex cursor-pointer items-center gap-2 bg-white/15 px-5 py-3 font-display text-sm font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md transition-[bottom,background-color,color] duration-300 hover:bg-accent hover:text-accent-fg sm:right-6',
             visible ? 'bottom-32 sm:bottom-44' : 'bottom-8',
@@ -776,7 +804,7 @@ const PlayerControls = ({
             {hasTracks && (
               <IconButton
                 box="size-9 sm:size-12"
-                label="Audio y subtítulos (c)"
+                label="Audio (a) y subtítulos (c)"
                 active={menu === 'tracks'}
                 aria-expanded={menu === 'tracks'}
                 onClick={() => setMenu((current) => (current === 'tracks' ? null : 'tracks'))}
@@ -787,7 +815,7 @@ const PlayerControls = ({
 
             <IconButton
               box="size-9 sm:size-12"
-              label="Ajustes"
+              label="Ajustes: velocidad (< >) y salto automático (o)"
               active={menu === 'settings'}
               aria-expanded={menu === 'settings'}
               onClick={() => setMenu((current) => (current === 'settings' ? null : 'settings'))}
@@ -840,7 +868,7 @@ const PlayerControls = ({
                       onClick={toggleAutoSkip}
                       className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left text-sm text-white/85 transition-colors hover:bg-white/10"
                     >
-                      Saltar intros automáticamente
+                      Saltar intros automáticamente (o)
                       <span className={clsx('relative h-4 w-7 shrink-0 transition-colors', autoSkip ? 'bg-accent' : 'bg-white/25')}>
                         <span className={clsx('absolute top-0.5 size-3 bg-white transition-[left]', autoSkip ? 'left-3.5' : 'left-0.5')} />
                       </span>
@@ -848,7 +876,7 @@ const PlayerControls = ({
                   )}
 
                   <div className="flex flex-col gap-2 px-3 py-3">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">Velocidad</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">Velocidad ( &lt; &gt; )</p>
 
                     <div className="flex flex-wrap gap-1.5">
                       {RATES.map((value) => (

@@ -58,7 +58,7 @@ const PlayerForm = () => {
       {/* Vista previa sobre una escena clara (nubes) para que se note el fondo del subtitulo */}
       <div
         aria-hidden="true"
-        style={{ backgroundImage: 'url(/images/subtitles-bg.png)', containerType: 'inline-size' }}
+        style={{ backgroundImage: 'url(/images/subtitles-bg.webp)', containerType: 'inline-size' }}
         className="cut grid aspect-video place-items-end justify-items-center overflow-hidden bg-cover bg-center px-[7%] pb-[6%] text-center"
       >
         <p
