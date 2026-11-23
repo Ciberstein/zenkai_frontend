@@ -2,7 +2,7 @@ import React from 'react'
 import clsx from 'clsx'
 import Icon from '../../../../shared/Icon'
 import PlayerTopBar from './PlayerTopBar'
-import { formatTime, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
+import { captionCss, formatTime, readCaptionStyle, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -105,6 +105,7 @@ const PlayerControls = ({
   const [scrub, setScrub] = React.useState(null);      // fraccion mientras se arrastra
   const [toast, setToast] = React.useState(null);      // { text, side }
   const [cue, setCue] = React.useState([]);            // lineas del subtitulo activo
+  const [captionStyle] = React.useState(readCaptionStyle);   // tamaño y opacidad elegidos en Ajustes
   const [stageHeight, setStageHeight] = React.useState(400);
   const [nearEnd, setNearEnd] = React.useState(false);
   const [active, setActive] = React.useState(null);    // segmento (intro/outro/recap) en curso
@@ -597,7 +598,8 @@ const PlayerControls = ({
         {cue.map((line, index) => (
           <p
             key={`${index}-${line}`}
-            className="max-w-full whitespace-pre-line bg-black/60 px-3 py-0.5 text-[clamp(15px,2.3vw,30px)] font-semibold leading-snug text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.9)]"
+            style={captionCss(captionStyle)}
+            className="max-w-full whitespace-pre-line px-3 py-0.5 font-semibold leading-snug [text-shadow:0_1px_2px_rgb(0_0_0/0.9)]"
           >
             {line}
           </p>

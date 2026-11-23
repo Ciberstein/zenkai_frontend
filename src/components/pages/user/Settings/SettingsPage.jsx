@@ -6,6 +6,7 @@ import { Tabs } from '../../../material'
 import PageHeader from '../../../shared/PageHeader'
 import ProfileForm from './partials/ProfileForm'
 import PasswordForm from './partials/PasswordForm'
+import PlayerForm from './partials/PlayerForm'
 
 export const SettingsPage = () => {
 
@@ -25,12 +26,15 @@ export const SettingsPage = () => {
           onChange={setTab}
           items={[
             { value: 'profile', label: t('Profile') },
+            { value: 'player', label: 'Reproductor' },
             { value: 'security', label: 'Seguridad' },
           ]}
         />
       </PageHeader>
 
-      {tab === 'profile' ? <ProfileForm /> : <PasswordForm />}
+      {tab === 'profile' && <ProfileForm />}
+      {tab === 'player' && <PlayerForm />}
+      {tab === 'security' && <PasswordForm />}
     </div>
   )
 }

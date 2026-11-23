@@ -63,3 +63,43 @@ export const formatTime = (seconds) => {
 
   return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
 };
+
+// ─── Aspecto de los subtitulos ────────────────────────────────────────────────
+
+// Fuentes que ya trae el dispositivo: no se descarga nada.
+export const CAPTION_FONTS = [
+  { value: 'default', label: 'Predeterminada', css: 'inherit' },
+  { value: 'sans', label: 'Sans-serif', css: 'Arial, Helvetica, sans-serif' },
+  { value: 'serif', label: 'Serif', css: 'Georgia, "Times New Roman", serif' },
+  { value: 'mono', label: 'Monoespaciada', css: '"Courier New", Consolas, monospace' },
+  { value: 'casual', label: 'Casual', css: '"Comic Sans MS", "Chalkboard SE", cursive' },
+];
+
+export const CAPTION_DEFAULTS = { size: 100, opacity: 60, color: '#ffffff', font: 'default' };   // % del tamaño · % de opacidad del fondo · color del texto · fuente
+
+const within = (value, min, max, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(Math.max(number, min), max) : fallback;
+};
+
+// Lo que el usuario fijo en Ajustes → Reproductor. Se guarda con el resto de preferencias del reproductor.
+export const readCaptionStyle = () => {
+  const prefs = readPrefs();
+
+  return {
+    size: within(prefs.captionSize, 50, 200, CAPTION_DEFAULTS.size),
+    opacity: within(prefs.captionOpacity, 0, 100, CAPTION_DEFAULTS.opacity),
+    font: CAPTION_FONTS.some((item) => item.value === prefs.captionFont) ? prefs.captionFont : CAPTION_DEFAULTS.font,
+    color: /^#[0-9a-f]{6}$/i.test(prefs.captionColor) ? prefs.captionColor : CAPTION_DEFAULTS.color,
+  };
+};
+
+// Estilo en linea de cada linea de subtitulo: tamaño base por el factor del usuario, y fondo negro con su opacidad.
+// En el reproductor el tamaño base sale del ancho de la ventana (vw); en la vista previa de Ajustes,
+// del ancho de la propia imagen (cqw, con `container-type` en ella), como si la imagen fuera la pantalla.
+export const captionCss = ({ size, opacity, color, font }, preview = false) => ({
+  color,
+  fontFamily: CAPTION_FONTS.find((item) => item.value === font)?.css,
+  fontSize: `calc(${preview ? '2.3cqw' : 'clamp(15px, 2.3vw, 30px)'} * ${size / 100})`,
+  backgroundColor: `rgb(0 0 0 / ${opacity / 100})`,
+});
