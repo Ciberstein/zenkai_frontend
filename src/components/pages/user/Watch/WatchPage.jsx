@@ -13,8 +13,10 @@ import PlayerTopBar from './partials/PlayerTopBar'
 // Un marco que tapa toda la pantalla, por encima incluso de las lineas CRT del tema
 // oscuro (z 9998): aqui manda el video. Sin barra superior ni lista de episodios;
 // volver a la serie, cambiar de episodio y de servidor viven dentro del reproductor.
+// Es también el elemento que se pone a pantalla completa (data-player-stage): no se desmonta al
+// cambiar de episodio, así que la pantalla completa se mantiene aunque el reproductor se recargue.
 const Stage = ({ children }) => (
-  <div className="fixed inset-0 z-9999 overflow-hidden bg-black">{children}</div>
+  <div data-player-stage className="fixed inset-0 z-9999 overflow-hidden bg-black">{children}</div>
 )
 
 export const WatchPage = () => {

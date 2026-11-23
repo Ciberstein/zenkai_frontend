@@ -383,7 +383,9 @@ const PlayerControls = ({
   };
 
   const toggleFullscreen = () => {
-    const el = wrapper.current;
+    // El marco de la página y no el propio reproductor: al pasar al siguiente episodio el
+    // reproductor se desmonta, y lo que estuviera a pantalla completa saldría de ella.
+    const el = wrapper.current?.closest('[data-player-stage]') ?? wrapper.current;
     const node = video.current;
 
     if (document.fullscreenElement || document.webkitFullscreenElement) {
