@@ -72,10 +72,13 @@ function App() {
           <Route index element={<Admin.Pages.Home />} />
           <Route path="/admin/catalog" element={<Admin.Pages.Catalog />} />
           <Route path="/admin/catalog/:id" element={<Admin.Pages.Episodes />} />
-          <Route path="/admin/accounts" element={<Admin.Pages.Accounts />} />
-          <Route path="/admin/jobs" element={<Admin.Pages.Jobs />} />
-          <Route path="/admin/logs" element={<Admin.Pages.Logs />} />
-          <Route path="/admin/settings" element={<Admin.Pages.Settings />} />
+
+          <Route element={<Protected.AdminOnly />} >
+            <Route path="/admin/accounts" element={<Admin.Pages.Accounts />} />
+            <Route path="/admin/jobs" element={<Admin.Pages.Jobs />} />
+            <Route path="/admin/logs" element={<Admin.Pages.Logs />} />
+            <Route path="/admin/settings" element={<Admin.Pages.Settings />} />
+          </Route>
         </Route>
 
       </Routes>

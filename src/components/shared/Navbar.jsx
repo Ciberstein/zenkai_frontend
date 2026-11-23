@@ -10,6 +10,7 @@ import Avatar from './Avatar'
 import Brand from './Brand'
 import Icon from './Icon'
 import clsx from 'clsx'
+import { ROLES } from '../../utils/roles'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ const User = ({ auth }) => {
                     <MenuItem><Link to="/history" className={ITEM}><Icon name="history" className="size-4.5 text-muted" />{t('History')}</Link></MenuItem>
                     <MenuItem><Link to="/settings" className={ITEM}><Icon name="settings" className="size-4.5 text-muted" />{t('Settings')}</Link></MenuItem>
 
-                    {account?.authority >= 30000 && (
+                    {account?.authority >= ROLES.MODERATOR && (
                       <MenuItem><Link to="/admin" className={ITEM}><Icon name="shield" className="size-4.5 text-muted" />Administración</Link></MenuItem>
                     )}
                   </div>

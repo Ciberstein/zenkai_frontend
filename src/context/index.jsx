@@ -2,6 +2,7 @@ import { accountThunk } from '../store/slices/account.slice';
 import auth_service from '../services/auth.services';
 import { useDispatch, useSelector } from 'react-redux';
 import React from "react";
+import { ROLES } from '../utils/roles';
 
 const AuthContext = React.createContext();
 const AdminContext = React.createContext();
@@ -34,7 +35,8 @@ const AuthProvider = ({ children }) => {
 const AdminProvider = ({ children }) => {
 
   const { auth, loading: authLoading } = React.useContext(Context.Auth);
-  const [admin, setAdmin] = React.useState(false);
+  const [staff, setStaff] = React.useState(false);   // moderador o superior: entra al panel
+  const [admin, setAdmin] = React.useState(false);    // administrador: todo el panel
   const [loading, setLoading] = React.useState(true);
 
   const account = useSelector(state => state.account);
@@ -43,6 +45,7 @@ const AdminProvider = ({ children }) => {
     if (authLoading) return;
 
     if (!auth) {
+      setStaff(false);
       setAdmin(false);
       setLoading(false);
       return;
@@ -52,12 +55,13 @@ const AdminProvider = ({ children }) => {
     // tenerla antes de decidir: si no, el panel parpadearia y redirigiria.
     if (!account?.id) return;
 
-    setAdmin(account?.authority >= 30000);
+    setStaff(account.authority >= ROLES.MODERATOR);
+    setAdmin(account.authority >= ROLES.ADMIN);
     setLoading(false);
   }, [auth, authLoading, account?.id]);
 
   return (
-    <AdminContext.Provider value={{ admin, loading }}>
+    <AdminContext.Provider value={{ staff, admin, loading }}>
       {children}
     </AdminContext.Provider>
   )

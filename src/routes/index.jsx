@@ -35,16 +35,27 @@ const Private = () => {
 
 const Admin = () => {
 
-  const { admin, loading } = React.useContext(Context.Admin);
+  const { staff, loading } = React.useContext(Context.Admin);
 
   if (loading) return null;
-  if (!admin) return <Navigate to="/" replace />;
+  if (!staff) return <Navigate to="/" replace />;
 
   return (
     <Layouts.Admin>
       <Outlet />
     </Layouts.Admin>
   )
+}
+
+// Dentro del panel, lo que el moderador no puede tocar: cuentas, tareas, logs y ajustes.
+const AdminOnly = () => {
+
+  const { admin, loading } = React.useContext(Context.Admin);
+
+  if (loading) return null;
+  if (!admin) return <Navigate to="/admin/catalog" replace />;
+
+  return <Outlet />
 }
 
 // El reproductor tiene su propio marco a pantalla completa.
@@ -61,6 +72,6 @@ const Watch = () => {
   )
 }
 
-const Protected = { User, Private, Admin, Watch };
+const Protected = { User, Private, Admin, AdminOnly, Watch };
 
 export default Protected;

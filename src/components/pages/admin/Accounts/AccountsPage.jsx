@@ -30,12 +30,30 @@ export const AccountsPage = () => {
   const accounts = useSelector(state => state.accounts);
   const account = useSelector(state => state.account);
 
+  const [roles, setRoles] = React.useState([]);
+
   React.useEffect(() => {
     dispatch(accountsThunk({ q: debounced }));
   }, [debounced]);
 
+  React.useEffect(() => {
+    api.get(`${API_ROUTES.ADMIN}/accounts/roles`).then((res) => setRoles(res.data)).catch(() => {});
+  }, []);
+
+  // Solo se puede conceder un rol por debajo del propio (el backend tambien lo exige).
+  const grantable = roles
+    .filter((role) => role.authority < account?.authority)
+    .map((role) => ({ value: String(role.authority), label: role.title }));
+
+  const roleName = (authority) => roles.find((role) => role.authority === authority)?.title ?? `Nivel ${authority}`;
+
   const setStatus = async (row, status) => {
     await api.patch(`${API_ROUTES.ADMIN}/accounts/${row.id}`, { status });
+    dispatch(accountsThunk({ q: debounced }));
+  };
+
+  const setRole = async (row, authority) => {
+    await api.patch(`${API_ROUTES.ADMIN}/accounts/${row.id}`, { authority: Number(authority) });
     dispatch(accountsThunk({ q: debounced }));
   };
 
@@ -70,12 +88,22 @@ export const AccountsPage = () => {
                   <p className="truncate text-[11px] text-muted">{row.email}</p>
                 </div>
 
-                <Tag color="outline">Nivel {row.authority}</Tag>
+                <Tag color="outline">{roleName(row.authority)}</Tag>
                 <Tag color={COLORS[row.status]}>{row.status}</Tag>
 
                 <span className="hidden text-[10px] uppercase tracking-widest text-muted sm:block">
                   {formatDate(row.createdAt)}
                 </span>
+
+                {!locked && (
+                  <Select
+                    size="sm"
+                    value={String(row.authority)}
+                    onChange={(value) => setRole(row, value)}
+                    data={grantable}
+                    className="min-w-32"
+                  />
+                )}
 
                 {!locked && (
                   <Select

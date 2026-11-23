@@ -98,6 +98,7 @@ const PlayerControls = ({
   const [muted, setMuted] = React.useState(false);
   const [rate, setRate] = React.useState(1);
   const [fs, setFs] = React.useState(false);
+  const [pip, setPip] = React.useState(false);
   const [idle, setIdle] = React.useState(false);
   const [menu, setMenu] = React.useState(null);        // null | 'tracks' | 'settings'
   const [hover, setHover] = React.useState(null);      // fraccion bajo el cursor
@@ -394,6 +395,17 @@ const PlayerControls = ({
     }
   };
 
+  // Pantalla sobre pantalla: el video sale a una ventana flotante. Solo donde el navegador lo ofrece.
+  const canPip = typeof document !== 'undefined' && Boolean(document.pictureInPictureEnabled);
+
+  const togglePip = () => {
+    const node = video.current;
+    if (!canPip || !node) return;
+
+    if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+    else node.requestPictureInPicture().catch(() => {});
+  };
+
   const toggleCaptions = () => {
     if (caption !== 'off') {
       lastCaption.current = caption;
@@ -419,6 +431,22 @@ const PlayerControls = ({
     return () => {
       document.removeEventListener('fullscreenchange', onChange);
       document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const node = video.current;
+    if (!node) return;
+
+    const enter = () => setPip(true);
+    const leave = () => setPip(false);
+
+    node.addEventListener('enterpictureinpicture', enter);
+    node.addEventListener('leavepictureinpicture', leave);
+
+    return () => {
+      node.removeEventListener('enterpictureinpicture', enter);
+      node.removeEventListener('leavepictureinpicture', leave);
     };
   }, []);
 
@@ -450,6 +478,7 @@ const PlayerControls = ({
         case 'ArrowDown': changeVolume((node?.volume ?? 1) - 0.05); announce(`Volumen ${Math.round(clamp((node?.volume ?? 1) - 0.05, 0, 1) * 100)}%`); break;
         case 'm': toggleMute(); break;
         case 'f': toggleFullscreen(); break;
+        case 'i': if (canPip) togglePip(); else handled = false; break;
         case 'c': toggleCaptions(); break;
         case 'n': if (onNext) onNext(); else handled = false; break;
         case 'p': if (onPrev) onPrev(); else handled = false; break;
@@ -764,7 +793,13 @@ const PlayerControls = ({
               <Icon name="settings" className="size-5 sm:size-7" />
             </IconButton>
 
-            <IconButton box="size-9 sm:size-12" label={fs ? 'Salir de pantalla completa (f)' : 'Pantalla completa (f)'} onClick={toggleFullscreen}>
+            {canPip && (
+              <IconButton box="size-9 sm:size-12" label={pip ? 'Salir de pantalla sobre pantalla (i)' : 'Pantalla sobre pantalla (i)'} active={pip} onClick={togglePip}>
+                <Icon name="pip" className="size-5 sm:size-7" />
+              </IconButton>
+            )}
+
+            <IconButton box="size-9 sm:size-12" label={fs ?'Salir de pantalla completa (f)' : 'Pantalla completa (f)'} onClick={toggleFullscreen}>
               <Icon name={fs ? 'fullscreen-exit' : 'fullscreen'} className="size-5 sm:size-7" />
             </IconButton>
           </div>

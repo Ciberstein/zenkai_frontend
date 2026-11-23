@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { adminAnimeThunk } from '../../../../store/slices/admin.anime.slice'
 import { accountsThunk } from '../../../../store/slices/accounts.slice'
 import { logsThunk } from '../../../../store/slices/logs.slice'
+import { Context } from '../../../../context'
 
 // ─── Stat ─────────────────────────────────────────────────────────────────────
 
@@ -29,11 +30,17 @@ export const HomePage = () => {
   const accounts = useSelector(state => state.accounts);
   const logs = useSelector(state => state.logs);
 
+  // El moderador solo ve el catalogo: pedir cuentas o logs le daria un 403.
+  const { admin } = React.useContext(Context.Admin);
+
   React.useEffect(() => {
     dispatch(adminAnimeThunk());
-    dispatch(accountsThunk());
-    dispatch(logsThunk());
-  }, []);
+
+    if (admin) {
+      dispatch(accountsThunk());
+      dispatch(logsThunk());
+    }
+  }, [admin]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,8 +48,8 @@ export const HomePage = () => {
 
       <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Stat label="Títulos" value={anime.pagination?.total} to="/admin/catalog" />
-        <Stat label="Cuentas" value={accounts.pagination?.total} to="/admin/accounts" />
-        <Stat label="Eventos" value={logs.pagination?.total} to="/admin/logs" />
+        {admin && <Stat label="Cuentas" value={accounts.pagination?.total} to="/admin/accounts" />}
+        {admin && <Stat label="Eventos" value={logs.pagination?.total} to="/admin/logs" />}
       </div>
     </div>
   )

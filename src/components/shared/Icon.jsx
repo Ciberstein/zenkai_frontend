@@ -14,6 +14,7 @@ const PATHS = {
   plus: <path d="M12 5v14M5 12h14" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   fullscreen: <path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" />,
+  pip: <path d="M3.5 6.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2V11M3.5 6.5v9a2 2 0 0 0 2 2H10M13 14h7.5v5H13z" />,
   'fullscreen-exit': <path d="M9 4.5V9H4.5M15 4.5V9h4.5M19.5 15H15v4.5M4.5 15H9v4.5" />,
   'rewind-10': <><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.8v3.4h3.4" /><text x="12" y="15.3" textAnchor="middle" fontSize="7" fontWeight="700" fill="currentColor" stroke="none">10</text></>,
   'forward-10': <><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.8v3.4h-3.4" /><text x="12" y="15.3" textAnchor="middle" fontSize="7" fontWeight="700" fill="currentColor" stroke="none">10</text></>,

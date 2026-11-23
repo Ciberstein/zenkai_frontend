@@ -2,16 +2,17 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
+import { Context } from '../../context'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ITEMS = [
   { to: '/admin', label: 'Panel', end: true },
   { to: '/admin/catalog', label: 'Catalog' },
-  { to: '/admin/accounts', label: 'Cuentas' },
-  { to: '/admin/jobs', label: 'Tareas' },
-  { to: '/admin/logs', label: 'Logs' },
-  { to: '/admin/settings', label: 'Settings' },
+  { to: '/admin/accounts', label: 'Cuentas', adminOnly: true },
+  { to: '/admin/jobs', label: 'Tareas', adminOnly: true },
+  { to: '/admin/logs', label: 'Logs', adminOnly: true },
+  { to: '/admin/settings', label: 'Settings', adminOnly: true },
 ];
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
@@ -19,12 +20,13 @@ const ITEMS = [
 const Admin = () => {
 
   const { t } = useTranslation();
+  const { admin } = React.useContext(Context.Admin);
 
   return (
     <aside className="hidden w-56 shrink-0 border-r border-line p-3 lg:block">
       <nav>
         <ul className="flex flex-col gap-1">
-          {ITEMS.map(({ to, label, end }) => (
+          {ITEMS.filter((item) => admin || !item.adminOnly).map(({ to, label, end }) => (
             <li key={to}>
               <NavLink
                 to={to}
