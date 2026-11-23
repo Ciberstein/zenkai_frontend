@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { useSelector } from 'react-redux'
 import Icon from '../../../../shared/Icon'
 import PlayerTopBar from './PlayerTopBar'
+import ShortcutsGuide from './ShortcutsGuide'
 import { captionCss, formatTime, readCaptionStyle, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -102,6 +103,7 @@ const PlayerControls = ({
   const [pip, setPip] = React.useState(false);
   const [idle, setIdle] = React.useState(false);
   const [menu, setMenu] = React.useState(null);        // null | 'tracks' | 'settings'
+  const [help, setHelp] = React.useState(false);        // guia de atajos abierta
   const [hover, setHover] = React.useState(null);      // fraccion bajo el cursor
   const [scrub, setScrub] = React.useState(null);      // fraccion mientras se arrastra
   const [toast, setToast] = React.useState(null);      // { text, side }
@@ -483,6 +485,12 @@ const PlayerControls = ({
     const onKey = (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
 
+      // Con la guia abierta solo se atienden Esc y ? (cerrarla); el resto no debe tocar el video.
+      if (help) {
+        if (event.key === 'Escape' || event.key === '?') { setHelp(false); event.preventDefault(); }
+        return;
+      }
+
       const target = event.target;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable) return;
 
@@ -513,6 +521,7 @@ const PlayerControls = ({
         case 'End': if (node && Number.isFinite(node.duration)) seekTo(node.duration); else handled = false; break;
         case 'n': if (onNext) onNext(); else handled = false; break;
         case 'p': if (onPrev) onPrev(); else handled = false; break;
+        case '?': setHelp(true); setMenu(null); break;
         case 'Escape': if (menu) setMenu(null); else handled = false; break;
         default:
           if (/^[0-9]$/.test(event.key) && node && Number.isFinite(node.duration)) seekTo((Number(event.key) / 10) * node.duration);
@@ -570,6 +579,7 @@ const PlayerControls = ({
     wrapper.current?.focus({ preventScroll: true });
 
     if (menu) { setMenu(null); return; }
+    if (help) { setHelp(false); return; }
 
     const now = Date.now();
     const touch = pointerType.current !== 'mouse';
@@ -635,6 +645,8 @@ const PlayerControls = ({
           </p>
         ))}
       </div>
+
+      {help && <ShortcutsGuide canPip={canPip} onClose={() => { setHelp(false); wrapper.current?.focus({ preventScroll: true }); }} />}
 
       {/* Cargando */}
       {waiting && !ended && (
@@ -898,6 +910,15 @@ const PlayerControls = ({
                       ))}
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(null); setHelp(true); }}
+                    className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left text-sm text-white/85 transition-colors hover:bg-white/10"
+                  >
+                    Atajos de teclado
+                    <kbd className="border border-white/25 bg-white/10 px-1.5 font-mono text-xs">?</kbd>
+                  </button>
                 </>
               )}
             </div>
