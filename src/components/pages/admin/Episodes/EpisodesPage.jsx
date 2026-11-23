@@ -15,6 +15,7 @@ import AudioDialog from './partials/AudioDialog'
 import SegmentDialog from './partials/SegmentDialog'
 import SubtitleDialog from './partials/SubtitleDialog'
 import UploadDialog from './partials/UploadDialog'
+import BatchUploadDialog from './partials/BatchUploadDialog'
 
 // Series largas (cientos de episodios): se pintan por tandas.
 const PAGE = 100;
@@ -37,6 +38,7 @@ export const EpisodesPage = () => {
   const [searching, setSearching] = React.useState(false);
   const [uploading, setUploading] = React.useState(null);
   const [dropped, setDropped] = React.useState(null);
+  const [batching, setBatching] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const [filter, setFilter] = React.useState('all');
   const [limit, setLimit] = React.useState(PAGE);
@@ -152,6 +154,7 @@ export const EpisodesPage = () => {
         </div>
 
         <div className="flex gap-2">
+          <Button color="ghost" size="sm" disabled={!episodes.length} onClick={() => setBatching(true)}>↑ Subir varios</Button>
           <Button color="ghost" size="sm" loading={searching} disabled={!withVideo} onClick={searchSegments}>Buscar marcas</Button>
           <Button size="sm" loading={syncing} onClick={sync}>↻ Sincronizar</Button>
         </div>
@@ -217,6 +220,15 @@ export const EpisodesPage = () => {
           open={Boolean(uploading)}
           initialFiles={dropped}
           onClose={() => { setUploading(null); setDropped(null); }}
+          onDone={load}
+        />
+      )}
+
+      {batching && (
+        <BatchUploadDialog
+          episodes={episodes}
+          open
+          onClose={() => setBatching(false)}
           onDone={load}
         />
       )}

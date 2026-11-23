@@ -1,0 +1,325 @@
+import React from 'react'
+import clsx from 'clsx'
+import uploads from '../../../../../services/uploads.services'
+import { UPLOAD_BUSY, latestUpload } from '../../../../../utils/upload.util'
+import { AUDIO, SUBS, VIDEO, guessEpisode, guessLang, kindOf, megabytes } from '../../../../../utils/batch.util'
+import { Button, Dialog, Input, Select } from '../../../../material'
+
+const LANGUAGES = [
+  { value: 'sub', label: 'Subtitulado' },
+  { value: 'dub', label: 'Doblado' },
+];
+
+const LANG = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
+const KIND_LABEL = { video: 'Video', audio: 'Audio', sub: 'Subtítulos' };
+const STATE_LABEL = { uploading: 'Subiendo', done: 'En cola', error: 'Error' };
+
+let counter = 0;
+
+// ─── BatchUploadDialog ────────────────────────────────────────────────────────
+
+// Sube varios episodios de una vez. Se sueltan todos los archivos (videos y, si hay, sus subtítulos
+// y audios); cada uno se asigna al episodio que dice su nombre (01.mkv, Serie - 05 [1080p].mkv,
+// 05.es.srt…) y se puede corregir antes de empezar. Después se sube un episodio detrás de otro con
+// el mismo flujo que la subida individual: el servicio de conversión los procesa en segundo plano.
+const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
+
+  const input = React.useRef(null);
+
+  const [files, setFiles] = React.useState([]);        // { id, file, kind, number, lang }
+  const [notice, setNotice] = React.useState(null);
+  const [options, setOptions] = React.useState({ server: 'Zenkai', audioLang: 'ja', language: 'sub' });
+  const [phase, setPhase] = React.useState('idle');    // idle | uploading
+  const [status, setStatus] = React.useState({});      // número de episodio → { state, percent, message }
+  const [sent, setSent] = React.useState(0);
+  const [over, setOver] = React.useState(false);
+
+  const uploading = phase === 'uploading';
+
+  const byNumber = React.useMemo(() => new Map(episodes.map((episode) => [episode.number, episode])), [episodes]);
+
+  const addFiles = (list) => {
+    const rejected = [];
+    const added = [];
+
+    for (const file of Array.from(list ?? [])) {
+      const kind = kindOf(file.name);
+
+      if (!kind) { rejected.push(file.name); continue; }
+
+      counter += 1;
+      added.push({ id: `${counter}`, file, kind, number: guessEpisode(file.name), lang: kind === 'video' ? '' : guessLang(file.name) });
+    }
+
+    setFiles((prev) => [...prev, ...added]);
+    setNotice(rejected.length ? `Formato no admitido: ${rejected.join(', ')}` : null);
+  };
+
+  const patch = (id, changes) => setFiles((prev) => prev.map((item) => (item.id === id ? { ...item, ...changes } : item)));
+  const remove = (id) => setFiles((prev) => prev.filter((item) => item.id !== id));
+
+  // Una subida a medias se pierde si se cierra o recarga la pestaña.
+  React.useEffect(() => {
+    if (!uploading) return;
+
+    const warn = (event) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [uploading]);
+
+  // Archivos agrupados por episodio, con lo que impide subir cada grupo (si algo lo impide).
+  const groups = React.useMemo(() => {
+    const map = new Map();
+
+    for (const item of files) {
+      const key = item.number ?? 'none';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(item);
+    }
+
+    return [...map.entries()]
+      .sort(([a], [b]) => (a === 'none' ? -1 : b === 'none' ? 1 : a - b))
+      .map(([key, items]) => {
+        const number = key === 'none' ? null : key;
+        const episode = number === null ? null : byNumber.get(number) ?? null;
+        const videos = items.filter((item) => item.kind === 'video');
+        const busy = episode ? UPLOAD_BUSY.includes(latestUpload(episode)?.status) : false;
+
+        const problem =
+          number === null ? 'Indica el número de episodio'
+            : !episode ? `El episodio ${number} no existe en la lista`
+              : busy ? 'Ya tiene una subida en curso'
+                : videos.length === 0 ? 'Falta el video de este episodio'
+                  : videos.length > 1 ? 'Hay más de un video para este episodio'
+                    : items.some((item) => item.kind !== 'video' && !LANG.test(item.lang)) ? 'Falta el idioma de algún subtítulo o audio'
+                      : null;
+
+        return { number, episode, items, problem, replaces: Boolean(episode?.sources?.length) };
+      });
+  }, [files, byNumber]);
+
+  const pending = groups.filter((group) => status[group.number]?.state !== 'done');
+  const ready = pending.length > 0 && pending.every((group) => !group.problem);
+
+  const total = pending.reduce((sum, group) => sum + group.items.reduce((s, item) => s + item.file.size, 0), 0);
+  const percent = total ? Math.min(100, Math.round((sent / total) * 100)) : 0;
+
+  const finished = groups.length > 0 && groups.every((group) => status[group.number]?.state === 'done');
+  const failed = groups.filter((group) => status[group.number]?.state === 'error').length;
+
+  const reset = () => {
+    setFiles([]);
+    setStatus({});
+    setNotice(null);
+    setSent(0);
+    setPhase('idle');
+  };
+
+  const close = () => {
+    if (uploading) return;
+    reset();
+    onClose();
+  };
+
+  // Un episodio detrás de otro: subir varios a la vez repartiría la conexión y los dejaría todos a medias.
+  const start = async () => {
+    setPhase('uploading');
+    setSent(0);
+
+    let done = 0;
+
+    for (const group of pending) {
+      const video = group.items.find((item) => item.kind === 'video');
+      const extras = group.items.filter((item) => item.kind !== 'video');
+      const ordered = [video, ...extras];
+      const groupTotal = ordered.reduce((sum, item) => sum + item.file.size, 0);
+
+      let created = null;
+
+      setStatus((prev) => ({ ...prev, [group.number]: { state: 'uploading', percent: 0 } }));
+
+      try {
+        created = await uploads.create(group.episode.id, {
+          filename: video.file.name,
+          size: video.file.size,
+          extras: extras.map((item) => ({ kind: item.kind, lang: item.lang, filename: item.file.name, size: item.file.size })),
+          options,
+        });
+
+        let groupDone = 0;
+
+        for (let index = 0; index < ordered.length; index += 1) {
+          await uploads.put(created.files[index].url, ordered[index].file, (loaded) => {
+            setSent(done + groupDone + loaded);
+            setStatus((prev) => ({ ...prev, [group.number]: { state: 'uploading', percent: Math.round(((groupDone + loaded) / groupTotal) * 100) } }));
+          });
+
+          groupDone += ordered[index].file.size;
+        }
+
+        await uploads.complete(created.id);
+
+        setStatus((prev) => ({ ...prev, [group.number]: { state: 'done' } }));
+        onDone();
+      } catch (err) {
+        // Si se creó el trabajo pero la subida falló, no se deja a medias en el servidor.
+        if (created) uploads.remove(created.id).catch(() => {});
+
+        setStatus((prev) => ({ ...prev, [group.number]: { state: 'error', message: err.response?.data?.message ?? err.message } }));
+      }
+
+      done += groupTotal;
+      setSent(done);
+    }
+
+    setPhase('idle');
+  };
+
+  const count = files.filter((item) => item.kind === 'video').length;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={close}
+      size="xl"
+      title="Subir varios episodios"
+      actions={
+        <>
+          <Button color="ghost" size="sm" disabled={uploading} onClick={close}>{finished ? 'Cerrar' : 'Cancelar'}</Button>
+          {!finished && (
+            <Button size="sm" disabled={!ready} loading={uploading} onClick={start}>
+              {failed ? 'Reintentar los que fallaron' : `Subir y publicar${pending.length ? ` (${pending.length})` : ''}`}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => !uploading && input.current?.click()}
+        onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && !uploading && input.current?.click()}
+        onDragOver={(event) => { event.preventDefault(); setOver(true); }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(event) => { event.preventDefault(); setOver(false); if (!uploading) addFiles(event.dataTransfer.files); }}
+        className={clsx(
+          'flex cursor-pointer flex-col items-center gap-1 border-2 border-dashed px-4 py-7 text-center transition-colors',
+          over ? 'border-accent bg-accent/10' : 'border-line bg-surface-2 hover:border-accent/60',
+          uploading && 'pointer-events-none opacity-60',
+        )}
+      >
+        <span className="text-sm font-semibold">
+          {count ? `${count} ${count === 1 ? 'video' : 'videos'} · suelta más archivos para añadirlos` : 'Suelta aquí los videos de los episodios'}
+        </span>
+        <span className="text-xs text-muted">
+          o haz clic para elegirlos. Cada archivo se asigna al episodio que indica su nombre (01.mkv, Serie - 05 [1080p].mkv, 05.es.srt…).
+        </span>
+
+        <input
+          ref={input}
+          type="file"
+          multiple
+          hidden
+          accept={[...VIDEO, ...AUDIO, ...SUBS].join(',')}
+          onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }}
+        />
+      </div>
+
+      {notice && <p className="text-xs text-red-400">{notice}</p>}
+
+      {groups.length > 0 && (
+        <ul className="flex max-h-[44vh] flex-col gap-3 overflow-y-auto pr-1">
+          {groups.map((group) => {
+            const state = status[group.number];
+            const message = state?.state === 'error' ? state.message : state?.state === 'done' ? null : group.problem;
+
+            return (
+              <li key={group.number ?? 'none'} className={clsx('border bg-surface-2', message ? 'border-red-500/40' : 'border-line')}>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-3 py-2">
+                  <span className="text-sm font-semibold">
+                    {group.number === null ? 'Sin número' : `Episodio ${group.number}`}
+                    {group.episode?.title ? <span className="font-normal text-muted"> · {group.episode.title}</span> : null}
+                  </span>
+
+                  {group.replaces && !state && <span className="bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">Reemplaza el video actual</span>}
+                  {state && (
+                    <span className={clsx('px-1.5 py-0.5 text-[10px]', state.state === 'error' ? 'bg-red-500/15 text-red-400' : 'bg-accent/15 text-accent-text')}>
+                      {STATE_LABEL[state.state]}{state.state === 'uploading' ? ` ${state.percent}%` : ''}
+                    </span>
+                  )}
+                </div>
+
+                {state?.state === 'uploading' && (
+                  <div className="h-1 w-full bg-surface"><div className="h-full bg-accent transition-[width] duration-200" style={{ width: `${state.percent}%` }} /></div>
+                )}
+
+                <ul className="divide-y divide-line">
+                  {group.items.map((item) => (
+                    <li key={item.id} className="flex flex-wrap items-end gap-2 px-3 py-2">
+                      <div className="min-w-0 flex-1 basis-48">
+                        <p className="truncate text-xs font-semibold">{item.file.name}</p>
+                        <p className="text-[11px] text-muted">{KIND_LABEL[item.kind]} · {megabytes(item.file.size)}</p>
+                      </div>
+
+                      {item.kind !== 'video' && (
+                        <div className="w-24">
+                          <Input full size="sm" name={`lang-${item.id}`} label="Idioma" placeholder="es" value={item.lang} onChange={(event) => patch(item.id, { lang: event.target.value.trim().toLowerCase() })} disabled={uploading} />
+                        </div>
+                      )}
+
+                      <div className="w-24">
+                        <Input
+                          full
+                          size="sm"
+                          type="number"
+                          min="0"
+                          name={`number-${item.id}`}
+                          label="Episodio"
+                          value={item.number ?? ''}
+                          onChange={(event) => patch(item.id, { number: event.target.value === '' ? null : Number(event.target.value) })}
+                          disabled={uploading || state?.state === 'done'}
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={uploading || state?.state === 'done'}
+                        onClick={() => remove(item.id)}
+                        aria-label={`Quitar ${item.file.name}`}
+                        className="mb-1 px-2 text-sm text-muted transition-colors hover:bg-red-500/15 hover:text-red-400 disabled:opacity-40"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {message && <p className="border-t border-line px-3 py-2 text-xs text-red-400">{message}</p>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Input full name="server" label="Nombre del servidor" value={options.server} onChange={(event) => setOptions((prev) => ({ ...prev, server: event.target.value }))} disabled={uploading} />
+        <Input full name="audioLang" label="Idioma del audio (ja, es…)" value={options.audioLang} onChange={(event) => setOptions((prev) => ({ ...prev, audioLang: event.target.value.trim().toLowerCase() }))} disabled={uploading} />
+        <Select full label="Tipo" value={options.language} onChange={(value) => setOptions((prev) => ({ ...prev, language: value }))} data={LANGUAGES} />
+      </div>
+
+      {uploading && (
+        <div className="flex flex-col gap-1">
+          <div className="h-2 w-full bg-surface-2"><div className="h-full bg-accent transition-[width] duration-200" style={{ width: `${percent}%` }} /></div>
+          <p className="text-xs text-muted">
+            Subiendo {percent}% · {megabytes(sent)} de {megabytes(total)}. No cierres esta pestaña hasta que termine.
+          </p>
+        </div>
+      )}
+
+      {finished && <p role="status" className="text-xs text-accent-text">Listo: los episodios están en cola. El servicio de conversión los procesa en segundo plano y el estado aparece en cada episodio.</p>}
+      {!finished && failed > 0 && !uploading && <p className="text-xs text-red-400">{failed} {failed === 1 ? 'episodio falló' : 'episodios fallaron'}: revisa el aviso en rojo y reintenta.</p>}
+    </Dialog>
+  )
+}
+
+export default BatchUploadDialog
