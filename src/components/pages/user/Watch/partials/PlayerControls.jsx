@@ -1,5 +1,6 @@
 import React from 'react'
 import clsx from 'clsx'
+import { useSelector } from 'react-redux'
 import Icon from '../../../../shared/Icon'
 import PlayerTopBar from './PlayerTopBar'
 import { captionCss, formatTime, readCaptionStyle, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
@@ -105,7 +106,8 @@ const PlayerControls = ({
   const [scrub, setScrub] = React.useState(null);      // fraccion mientras se arrastra
   const [toast, setToast] = React.useState(null);      // { text, side }
   const [cue, setCue] = React.useState([]);            // lineas del subtitulo activo
-  const [captionStyle] = React.useState(readCaptionStyle);   // tamaño y opacidad elegidos en Ajustes
+  const savedCaptions = useSelector((state) => state.account?.profile?.preferences?.subtitles);
+  const captionStyle = React.useMemo(() => readCaptionStyle(savedCaptions), [savedCaptions]);   // el aspecto elegido en Ajustes
   const [stageHeight, setStageHeight] = React.useState(400);
   const [nearEnd, setNearEnd] = React.useState(false);
   const [active, setActive] = React.useState(null);    // segmento (intro/outro/recap) en curso

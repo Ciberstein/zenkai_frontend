@@ -82,15 +82,18 @@ const within = (value, min, max, fallback) => {
   return Number.isFinite(number) ? Math.min(Math.max(number, min), max) : fallback;
 };
 
-// Lo que el usuario fijo en Ajustes → Reproductor. Se guarda con el resto de preferencias del reproductor.
-export const readCaptionStyle = () => {
+// Apariencia de los subtitulos: manda lo guardado en el perfil (profile.preferences.subtitles) y, si
+// aun no hay nada (cuentas anteriores a este ajuste), lo que quedo en este navegador. Cada valor se
+// comprueba y, si no vale, se usa el de por defecto.
+export const readCaptionStyle = (saved) => {
   const prefs = readPrefs();
+  const from = saved ?? { size: prefs.captionSize, opacity: prefs.captionOpacity, color: prefs.captionColor, font: prefs.captionFont };
 
   return {
-    size: within(prefs.captionSize, 50, 200, CAPTION_DEFAULTS.size),
-    opacity: within(prefs.captionOpacity, 0, 100, CAPTION_DEFAULTS.opacity),
-    font: CAPTION_FONTS.some((item) => item.value === prefs.captionFont) ? prefs.captionFont : CAPTION_DEFAULTS.font,
-    color: /^#[0-9a-f]{6}$/i.test(prefs.captionColor) ? prefs.captionColor : CAPTION_DEFAULTS.color,
+    size: within(from.size, 50, 200, CAPTION_DEFAULTS.size),
+    opacity: within(from.opacity, 0, 100, CAPTION_DEFAULTS.opacity),
+    font: CAPTION_FONTS.some((item) => item.value === from.font) ? from.font : CAPTION_DEFAULTS.font,
+    color: /^#[0-9a-f]{6}$/i.test(from.color) ? from.color : CAPTION_DEFAULTS.color,
   };
 };
 
