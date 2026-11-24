@@ -40,7 +40,12 @@ export const matchLanguage = (list, code, langOf = (item) => item.lang) => {
 // "ja" → "Japonés". Los manifiestos suelen traer nombres genericos ("audio_1")
 // pero siempre el codigo de idioma, que es lo que de verdad dice que suena.
 // Códigos que no son ISO pero se usan en la práctica: "lat" es español latino (para el navegador sería latín).
-const ALIASES = { lat: 'Español latino' };
+const ALIASES = {
+  es: 'Español (España)',
+  'es-es': 'Español (España)',
+  lat: 'Español (Latinoamérica)',
+  'es-419': 'Español (Latinoamérica)',
+};
 
 export const languageName = (code, fallback) => {
   if (ALIASES[String(code).toLowerCase()]) return ALIASES[String(code).toLowerCase()];
