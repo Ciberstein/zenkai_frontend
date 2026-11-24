@@ -28,6 +28,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
   const [file, setFile] = React.useState(null);
   const [language, setLanguage] = React.useState('');
   const [offset, setOffset] = React.useState('0');
+  const [track, setTrack] = React.useState('1');
   const [sent, setSent] = React.useState(0);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState(null);
@@ -35,7 +36,9 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
 
   const offsetMs = Number(offset);
   const validOffset = offset.trim() !== '' && Number.isInteger(offsetMs) && Math.abs(offsetMs) <= 60000;
-  const ready = file && LANG.test(language) && validOffset;
+  const trackNumber = Number(track);
+  const validTrack = /^\d+$/.test(track.trim()) && trackNumber >= 1 && trackNumber <= 64;
+  const ready = file && LANG.test(language) && validOffset && validTrack;
 
   const pick = (list) => {
     const chosen = Array.from(list ?? [])[0];
@@ -57,6 +60,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
     setFile(null);
     setLanguage('');
     setOffset('0');
+    setTrack('1');
     setSent(0);
     setError(null);
   };
@@ -84,7 +88,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
     setSent(0);
 
     try {
-      created = await uploads.createAudio(episode.id, { filename: file.name, size: file.size, language, offset: offsetMs });
+      created = await uploads.createAudio(episode.id, { filename: file.name, size: file.size, language, offset: offsetMs, track: trackNumber });
       await uploads.put(created.files[0].url, file, setSent);
       await uploads.complete(created.id);
 
@@ -139,7 +143,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
         ) : (
           <>
             <span className="text-sm font-semibold">Suelta aquí el audio del doblaje</span>
-            <span className="text-xs text-muted">o haz clic para elegirlo · audio o video con su pista de audio</span>
+            <span className="text-xs text-muted">o haz clic para elegirlo · audio o video; si trae varias pistas de audio, indica abajo cuál usar</span>
           </>
         )}
 
@@ -152,13 +156,23 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Input
           full
           name="language"
           label="Código de idioma (es, es-419, en…)"
           value={language}
           onChange={(event) => setLanguage(event.target.value.trim().toLowerCase())}
+          disabled={saving}
+        />
+
+        <Input
+          full
+          name="track"
+          label="Pista de audio del archivo"
+          inputMode="numeric"
+          value={track}
+          onChange={(event) => setTrack(event.target.value.trim())}
           disabled={saving}
         />
 
@@ -180,6 +194,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
         </div>
       )}
 
+      {!validTrack && <p className="text-xs text-red-400">La pista es un número entero desde 1 (1 = la primera pista de audio del archivo).</p>}
       {offset.trim() !== '' && !validOffset && <p className="text-xs text-red-400">El desfase es un número entero de milisegundos, entre -60000 y 60000.</p>}
       {error && <p className="text-xs text-red-400">{error}</p>}
 

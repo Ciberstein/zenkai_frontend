@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import uploads from '../../../../../services/uploads.services'
 import { UPLOAD_BUSY, latestUpload } from '../../../../../utils/upload.util'
 import { AUDIO, SUBS, VIDEO, guessEpisode, guessLang, kindOf, megabytes } from '../../../../../utils/batch.util'
+import { subtitleName } from '../../../../../utils/player.util'
 import { Button, Dialog, Input, Select } from '../../../../material'
 
 const LANGUAGES = [
@@ -12,16 +13,17 @@ const LANGUAGES = [
 
 const LANG = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
 const KIND_LABEL = { video: 'Video', audio: 'Audio', sub: 'Subtítulos' };
-const STATE_LABEL = { uploading: 'Subiendo', done: 'En cola', error: 'Error' };
+const STATE_LABEL = { uploading: 'Subiendo', done: 'Listo', error: 'Error' };
 
 let counter = 0;
 
 // ─── BatchUploadDialog ────────────────────────────────────────────────────────
 
-// Sube varios episodios de una vez. Se sueltan todos los archivos (videos y, si hay, sus subtítulos
-// y audios); cada uno se asigna al episodio que dice su nombre (01.mkv, Serie - 05 [1080p].mkv,
-// 05.es.srt…) y se puede corregir antes de empezar. Después se sube un episodio detrás de otro con
-// el mismo flujo que la subida individual: el servicio de conversión los procesa en segundo plano.
+// Sube varios episodios de una vez. Se sueltan todos los archivos (videos, subtítulos y audios);
+// cada uno se asigna al episodio que dice su nombre (01.mkv, Serie - 05 [1080p].mkv, 05.es.srt,
+// 05.lat.m4a…) y se puede corregir antes de empezar. Un episodio con video se sube entero (con sus
+// subtítulos y audios dentro); uno sin video añade sus subtítulos y audios al video que ya tiene
+// publicado. Se sube un episodio detrás de otro, con el mismo flujo que las subidas individuales.
 const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
 
   const input = React.useRef(null);
@@ -85,16 +87,23 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
         const videos = items.filter((item) => item.kind === 'video');
         const busy = episode ? UPLOAD_BUSY.includes(latestUpload(episode)?.status) : false;
 
+        const subs = items.filter((item) => item.kind === 'sub');
+        const audios = items.filter((item) => item.kind === 'audio');
+        const published = Boolean(episode?.sources?.some((source) => source.type === 'hls'));
+        const repeated = subs.some((item, index) => subs.findIndex((other) => other.lang === item.lang) !== index);
+
         const problem =
           number === null ? 'Indica el número de episodio'
             : !episode ? `El episodio ${number} no existe en la lista`
               : busy ? 'Ya tiene una subida en curso'
-                : videos.length === 0 ? 'Falta el video de este episodio'
-                  : videos.length > 1 ? 'Hay más de un video para este episodio'
-                    : items.some((item) => item.kind !== 'video' && !LANG.test(item.lang)) ? 'Falta el idioma de algún subtítulo o audio'
-                      : null;
+                : videos.length > 1 ? 'Hay más de un video para este episodio'
+                  : items.some((item) => item.kind !== 'video' && !LANG.test(item.lang)) ? 'Falta el idioma de algún subtítulo o audio'
+                    : repeated ? 'Hay dos subtítulos en el mismo idioma'
+                      : videos.length === 0 && audios.length > 0 && !published ? 'Para añadir un audio el episodio necesita su video publicado: suelta también el video'
+                        : videos.length === 0 && audios.length > 1 ? 'Solo se puede añadir un audio por episodio a la vez: sube el otro después'
+                          : null;
 
-        return { number, episode, items, problem, replaces: Boolean(episode?.sources?.length) };
+        return { number, episode, items, problem, replaces: videos.length > 0 && Boolean(episode?.sources?.length), addons: videos.length === 0 };
       });
   }, [files, byNumber]);
 
@@ -131,35 +140,60 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
     for (const group of pending) {
       const video = group.items.find((item) => item.kind === 'video');
       const extras = group.items.filter((item) => item.kind !== 'video');
-      const ordered = [video, ...extras];
+      const ordered = video ? [video, ...extras] : [...extras].sort((x, y) => (x.kind === 'sub' ? -1 : 1) - (y.kind === 'sub' ? -1 : 1));
       const groupTotal = ordered.reduce((sum, item) => sum + item.file.size, 0);
 
       let created = null;
+      let groupDone = 0;
+
+      const progress = (loaded) => {
+        setSent(done + groupDone + loaded);
+        setStatus((prev) => ({ ...prev, [group.number]: { state: 'uploading', percent: Math.round(((groupDone + loaded) / groupTotal) * 100) } }));
+      };
 
       setStatus((prev) => ({ ...prev, [group.number]: { state: 'uploading', percent: 0 } }));
 
       try {
-        created = await uploads.create(group.episode.id, {
-          filename: video.file.name,
-          size: video.file.size,
-          extras: extras.map((item) => ({ kind: item.kind, lang: item.lang, filename: item.file.name, size: item.file.size })),
-          options,
-        });
-
-        let groupDone = 0;
-
-        for (let index = 0; index < ordered.length; index += 1) {
-          await uploads.put(created.files[index].url, ordered[index].file, (loaded) => {
-            setSent(done + groupDone + loaded);
-            setStatus((prev) => ({ ...prev, [group.number]: { state: 'uploading', percent: Math.round(((groupDone + loaded) / groupTotal) * 100) } }));
+        if (video) {
+          // Episodio con video: un solo trabajo con todo lo que lleve (se convierte y publica entero).
+          created = await uploads.create(group.episode.id, {
+            filename: video.file.name,
+            size: video.file.size,
+            extras: extras.map((item) => ({ kind: item.kind, lang: item.lang, filename: item.file.name, size: item.file.size })),
+            options,
           });
 
-          groupDone += ordered[index].file.size;
+          for (let index = 0; index < ordered.length; index += 1) {
+            await uploads.put(created.files[index].url, ordered[index].file, progress);
+            groupDone += ordered[index].file.size;
+          }
+
+          await uploads.complete(created.id);
+        } else {
+          // Sin video: se añade a lo ya publicado. Los subtítulos se guardan al momento; el audio lo suma el servicio de conversión.
+          const hasSubs = (group.episode.subtitles?.length ?? 0) > 0;
+          const firstSub = ordered.find((other) => other.kind === 'sub');
+
+          for (const item of ordered) {
+            if (item.kind === 'sub') {
+              await uploads.subtitle(group.episode.id, item.file, {
+                language: item.lang,
+                label: subtitleName(item.lang, item.lang),
+                default: !hasSubs && firstSub === item,
+              });
+            } else {
+              created = await uploads.createAudio(group.episode.id, { filename: item.file.name, size: item.file.size, language: item.lang, offset: 0 });
+              await uploads.put(created.files[0].url, item.file, progress);
+              await uploads.complete(created.id);
+              created = null;
+            }
+
+            groupDone += item.file.size;
+            setSent(done + groupDone);
+          }
         }
 
-        await uploads.complete(created.id);
-
-        setStatus((prev) => ({ ...prev, [group.number]: { state: 'done' } }));
+        setStatus((prev) => ({ ...prev, [group.number]: { state: 'done', queued: Boolean(video) || ordered.some((item) => item.kind === 'audio') } }));
         onDone();
       } catch (err) {
         // Si se creó el trabajo pero la subida falló, no se deja a medias en el servidor.
@@ -182,7 +216,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
       open={open}
       onClose={close}
       size="xl"
-      title="Subir varios episodios"
+      title="Subir varios episodios (videos, subtítulos y audios)"
       actions={
         <>
           <Button color="ghost" size="sm" disabled={uploading} onClick={close}>{finished ? 'Cerrar' : 'Cancelar'}</Button>
@@ -209,10 +243,10 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
         )}
       >
         <span className="text-sm font-semibold">
-          {count ? `${count} ${count === 1 ? 'video' : 'videos'} · suelta más archivos para añadirlos` : 'Suelta aquí los videos de los episodios'}
+          {files.length ? `${files.length} ${files.length === 1 ? 'archivo' : 'archivos'}${count ? ` (${count} ${count === 1 ? 'video' : 'videos'})` : ''} · suelta más para añadirlos` : 'Suelta aquí los videos, subtítulos y audios de los episodios'}
         </span>
         <span className="text-xs text-muted">
-          o haz clic para elegirlos. Cada archivo se asigna al episodio que indica su nombre (01.mkv, Serie - 05 [1080p].mkv, 05.es.srt…).
+          o haz clic para elegirlos. Cada archivo se asigna al episodio que indica su nombre (01.mkv, Serie - 05 [1080p].mkv, 05.es.srt, 05.lat.m4a…). Sin video, los subtítulos y audios se añaden al que el episodio ya tenga.
         </span>
 
         <input
@@ -242,9 +276,10 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
                   </span>
 
                   {group.replaces && !state && <span className="bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">Reemplaza el video actual</span>}
+                  {group.addons && !state && <span className="bg-surface px-1.5 py-0.5 text-[10px] text-muted">Se añade al video ya publicado</span>}
                   {state && (
                     <span className={clsx('px-1.5 py-0.5 text-[10px]', state.state === 'error' ? 'bg-red-500/15 text-red-400' : 'bg-accent/15 text-accent-text')}>
-                      {STATE_LABEL[state.state]}{state.state === 'uploading' ? ` ${state.percent}%` : ''}
+                      {state.state === 'done' ? (state.queued ? 'En cola' : 'Añadido') : STATE_LABEL[state.state]}{state.state === 'uploading' ? ` ${state.percent}%` : ''}
                     </span>
                   )}
                 </div>
@@ -316,7 +351,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
         </div>
       )}
 
-      {finished && <p role="status" className="text-xs text-accent-text">Listo: los episodios están en cola. El servicio de conversión los procesa en segundo plano y el estado aparece en cada episodio.</p>}
+      {finished && <p role="status" className="text-xs text-accent-text">Listo. Lo que lleva video o audio lo procesa el servicio de conversión en segundo plano y el estado aparece en cada episodio; los subtítulos ya están añadidos.</p>}
       {!finished && failed > 0 && !uploading && <p className="text-xs text-red-400">{failed} {failed === 1 ? 'episodio falló' : 'episodios fallaron'}: revisa el aviso en rojo y reintenta.</p>}
     </Dialog>
   )
