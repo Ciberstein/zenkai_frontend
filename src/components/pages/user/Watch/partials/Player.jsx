@@ -2,7 +2,7 @@ import React from 'react'
 import Hls from 'hls.js'
 import { useSelector } from 'react-redux'
 import player_service from '../../../../../services/player.services'
-import { languageName, matchLanguage, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
+import { audioLabel, languageName, matchLanguage, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
 import Icon from '../../../../shared/Icon'
 import PlayerControls, { IconButton, Section } from './PlayerControls'
 import PlayerTopBar from './PlayerTopBar'
@@ -156,7 +156,7 @@ const Player = ({
     hls.current = instance;
 
     const syncAudio = () => setAudio({
-      tracks: instance.audioTracks.map((track, index) => ({ key: String(index), label: (track.lang && languageName(track.lang, track.name)) || track.name || `Pista ${index + 1}`, lang: track.lang })),
+      tracks: instance.audioTracks.map((track, index) => ({ key: String(index), label: audioLabel(track, `Pista ${index + 1}`), lang: track.lang })),
       current: String(instance.audioTrack),
     });
 

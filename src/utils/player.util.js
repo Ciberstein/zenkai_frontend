@@ -39,7 +39,12 @@ export const matchLanguage = (list, code, langOf = (item) => item.lang) => {
 
 // "ja" → "Japonés". Los manifiestos suelen traer nombres genericos ("audio_1")
 // pero siempre el codigo de idioma, que es lo que de verdad dice que suena.
+// Códigos que no son ISO pero se usan en la práctica: "lat" es español latino (para el navegador sería latín).
+const ALIASES = { lat: 'Español latino' };
+
 export const languageName = (code, fallback) => {
+  if (ALIASES[String(code).toLowerCase()]) return ALIASES[String(code).toLowerCase()];
+
   try {
     const name = new Intl.DisplayNames(['es'], { type: 'language' }).of(code);
     return name.charAt(0).toUpperCase() + name.slice(1);
@@ -106,3 +111,11 @@ export const captionCss = ({ size, opacity, color, font }, preview = false) => (
   fontSize: `calc(${preview ? '2.3cqw' : 'clamp(15px, 2.3vw, 30px)'} * ${size / 100})`,
   backgroundColor: `rgb(0 0 0 / ${opacity / 100})`,
 });
+
+// Cómo se muestra una pista de audio: el nombre que le puso el administrador y, si no tiene (el
+// manifiesto trae uno genérico, "audio_1"), el del idioma.
+export const audioLabel = (track, fallback) =>
+  (track.name && !/^audio_\d+$/.test(track.name) ? track.name : null)
+  || (track.lang && languageName(track.lang, track.name))
+  || track.name
+  || fallback;

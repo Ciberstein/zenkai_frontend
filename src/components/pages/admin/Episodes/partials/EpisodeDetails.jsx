@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import Icon from '../../../../shared/Icon'
 import segmentsApi from '../../../../../services/segments.services'
 import uploads from '../../../../../services/uploads.services'
-import { languageName } from '../../../../../utils/player.util'
+import { audioLabel } from '../../../../../utils/player.util'
 import { SEGMENT_TYPES, clock } from '../../../../../utils/segment.util'
 
 // ─── Piezas ───────────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ const Card = ({ title, count, actions = null, notice = null, empty, children }) 
 const Row = ({ title, meta, actions = null }) => (
   <li className="flex min-h-16 items-center gap-3 px-4 py-3">
     <div className="min-w-0 flex-1">
-      <p className="truncate text-sm font-semibold">{title}</p>
+      <div className="truncate text-sm font-semibold">{title}</div>
       <p className={clsx('mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted', MONO)}>{meta}</p>
     </div>
 
@@ -91,8 +91,28 @@ const AudioCard = ({ episodeId, tracks, error, setError, load }) => {
     }
   };
 
+  // Edición del nombre en la propia fila: { dir, value }
+  const [editing, setEditing] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const rename = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+
+    try {
+      await uploads.renameAudio(episodeId, editing.dir, editing.value.trim());
+      setEditing(null);
+      setError(null);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message ?? err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const remove = async (track) => {
-    const name = languageName(track.lang, track.lang ?? track.dir);
+    const name = audioLabel(track, track.lang ?? track.dir);
     if (!window.confirm(`¿Quitar el audio "${name}" (${track.dir}) del episodio? Se borra también del bucket.`)) return;
 
     try {
@@ -108,14 +128,30 @@ const AudioCard = ({ episodeId, tracks, error, setError, load }) => {
       {(tracks ?? []).map((track) => (
         <Row
           key={track.dir}
-          title={languageName(track.lang, track.lang ?? track.dir)}
+          title={editing?.dir === track.dir ? (
+            <form onSubmit={rename} className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={editing.value}
+                maxLength={40}
+                placeholder={audioLabel({ lang: track.lang }, track.dir)}
+                onChange={(event) => setEditing({ dir: track.dir, value: event.target.value })}
+                onKeyDown={(event) => event.key === 'Escape' && setEditing(null)}
+                aria-label="Nombre del audio"
+                className="h-8 min-w-0 flex-1 border border-line bg-surface-2 px-2 text-sm font-semibold outline-none focus:border-accent"
+              />
+              <Action type="submit" accent disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</Action>
+              <Action onClick={() => setEditing(null)}>Cancelar</Action>
+            </form>
+          ) : audioLabel(track, track.lang ?? track.dir)}
           meta={<><span>{track.dir}</span>{track.default && <Tag tone="accent">Por defecto</Tag>}</>}
-          actions={
+          actions={editing?.dir === track.dir ? null : (
             <>
+              <Action onClick={() => setEditing({ dir: track.dir, value: track.name ?? '' })}>Renombrar</Action>
               {!track.default && <Action onClick={() => makeDefault(track)}>Predeterminar</Action>}
               {tracks.length > 1 && <RemoveButton label={`Quitar el audio ${track.dir}`} onClick={() => remove(track)} />}
             </>
-          }
+          )}
         />
       ))}
     </Card>
@@ -189,6 +225,82 @@ const SegmentCard = ({ episode, onSegment, onChanged }) => {
   )
 }
 
+// ─── Subtítulos ───────────────────────────────────────────────────────────────
+
+const LANG = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/i;
+
+const FIELD = 'h-8 min-w-0 border border-line bg-surface-2 px-2 text-sm outline-none focus:border-accent';
+
+const SubtitleCard = ({ subtitles, onChanged, onRemove }) => {
+
+  // Edición en la propia fila: { id, label, language }
+  const [editing, setEditing] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState(null);
+
+  const run = async (action) => {
+    setSaving(true);
+
+    try {
+      await action();
+      setEditing(null);
+      setError(null);
+      onChanged();
+    } catch (err) {
+      setError(err.response?.data?.message ?? err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const save = (event) => {
+    event.preventDefault();
+    run(() => uploads.updateSubtitle(editing.id, { label: editing.label.trim(), language: editing.language.trim().toLowerCase() }));
+  };
+
+  return (
+    <Card title="Subtítulos" count={subtitles.length} notice={error} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
+      {subtitles.map((subtitle) => (
+        <Row
+          key={subtitle.id}
+          title={editing?.id === subtitle.id ? (
+            <form onSubmit={save} className="flex flex-wrap items-center gap-2">
+              <input
+                autoFocus
+                value={editing.label}
+                maxLength={60}
+                onChange={(event) => setEditing({ ...editing, label: event.target.value })}
+                onKeyDown={(event) => event.key === 'Escape' && setEditing(null)}
+                aria-label="Nombre de los subtítulos"
+                className={clsx(FIELD, 'flex-1 basis-32 font-semibold')}
+              />
+              <input
+                value={editing.language}
+                maxLength={12}
+                onChange={(event) => setEditing({ ...editing, language: event.target.value })}
+                onKeyDown={(event) => event.key === 'Escape' && setEditing(null)}
+                aria-label="Idioma (es, en, es-419…)"
+                placeholder="es"
+                className={clsx(FIELD, 'w-20 font-mono')}
+              />
+              <Action type="submit" accent disabled={saving || !editing.label.trim() || !LANG.test(editing.language.trim())}>{saving ? 'Guardando…' : 'Guardar'}</Action>
+              <Action onClick={() => setEditing(null)}>Cancelar</Action>
+            </form>
+          ) : subtitle.label}
+          meta={<><span>{subtitle.language}</span>{subtitle.default && <Tag tone="accent">Por defecto</Tag>}</>}
+          actions={editing?.id === subtitle.id ? null : (
+            <>
+              <Action onClick={() => setEditing({ id: subtitle.id, label: subtitle.label, language: subtitle.language })}>Editar</Action>
+              {!subtitle.default && <Action disabled={saving} onClick={() => run(() => uploads.updateSubtitle(subtitle.id, { default: true }))}>Predeterminar</Action>}
+              <RemoveButton label={`Quitar los subtítulos ${subtitle.label}`} onClick={() => onRemove(subtitle.id)} />
+            </>
+          )}
+        />
+      ))}
+    </Card>
+  )
+}
+
 // ─── EpisodeDetails ───────────────────────────────────────────────────────────
 
 // El panel que se despliega bajo un episodio: fuentes, audios, marcas y subtítulos, cada uno en
@@ -221,16 +333,7 @@ const EpisodeDetails = ({ episode, published, audio, onSegment, onChanged, onRem
 
       {sources.length > 0 && <SegmentCard episode={episode} onSegment={onSegment} onChanged={onChanged} />}
 
-      <Card title="Subtítulos" count={subtitles.length} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
-        {subtitles.map((subtitle) => (
-          <Row
-            key={subtitle.id}
-            title={subtitle.label}
-            meta={<><span>{subtitle.language}</span>{subtitle.default && <Tag tone="accent">Por defecto</Tag>}</>}
-            actions={<RemoveButton label={`Quitar los subtítulos ${subtitle.label}`} onClick={() => onRemoveSubtitle(subtitle.id)} />}
-          />
-        ))}
-      </Card>
+      <SubtitleCard subtitles={subtitles} onChanged={onChanged} onRemove={onRemoveSubtitle} />
     </div>
   )
 }

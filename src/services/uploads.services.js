@@ -37,11 +37,15 @@ const uploads = {
     { params: { ...params, filename: file.name }, headers: { 'Content-Type': 'application/octet-stream' } },
   ).then((res) => res.data),
 
+  // Editar una pista de subtitulos: { label?, language?, default? }.
+  updateSubtitle: (id, body) => api.patch(`${base}/subtitles/${id}`, body).then((res) => res.data),
+
   // Otro audio (doblaje) para un episodio ya publicado: se sube el archivo y el worker lo suma.
   createAudio: (episodeId, body) => api.post(`${base}/episodes/${episodeId}/audio-uploads`, body).then((res) => res.data),
   // Audios que tiene publicado el episodio y quitar uno (p. ej. un doblaje de mas).
   audio: (episodeId) => api.get(`${base}/episodes/${episodeId}/audio`).then((res) => res.data),
   defaultAudio: (episodeId, dir) => api.put(`${base}/episodes/${episodeId}/audio/${dir}/default`).then((res) => res.data),
+  renameAudio: (episodeId, dir, name) => api.patch(`${base}/episodes/${episodeId}/audio/${dir}`, { name }).then((res) => res.data),
   removeAudio: (episodeId, dir) => api.delete(`${base}/episodes/${episodeId}/audio/${dir}`).then((res) => res.data),
   put,
 };
