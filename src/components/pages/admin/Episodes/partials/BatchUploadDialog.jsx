@@ -246,7 +246,8 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
         onDragLeave={() => setOver(false)}
         onDrop={(event) => { event.preventDefault(); setOver(false); if (!uploading) addFiles(event.dataTransfer.files); }}
         className={clsx(
-          'flex cursor-pointer flex-col items-center gap-1 border-2 border-dashed px-4 py-7 text-center transition-colors',
+          'flex cursor-pointer flex-col items-center gap-1 border-2 border-dashed px-4 text-center transition-colors',
+          files.length ? 'py-3' : 'py-7',
           over ? 'border-accent bg-accent/10' : 'border-line bg-surface-2 hover:border-accent/60',
           uploading && 'pointer-events-none opacity-60',
         )}
@@ -271,7 +272,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
       {notice && <p className="text-xs text-red-400">{notice}</p>}
 
       {groups.length > 0 && (
-        <ul className="flex max-h-[44vh] flex-col gap-3 overflow-y-auto pr-1">
+        <ul className="flex max-h-[26vh] flex-col gap-3 overflow-y-auto pr-1">
           {groups.map((group) => {
             const state = status[group.number];
             const message = state?.state === 'error' ? state.message : state?.state === 'done' ? null : group.problem;
@@ -345,20 +346,31 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
         </ul>
       )}
 
-      <div className="flex flex-col gap-3 border border-line bg-surface-2 p-3">
-        <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <input type="checkbox" className="mt-0.5 size-4 accent-accent" checked={audioOnly} onChange={(event) => setAudioOnly(event.target.checked)} disabled={uploading} />
-          <span>
-            <span className="font-semibold">Usar los videos solo para extraer su audio</span>
-            <span className="block text-xs text-muted">
-              En vez de publicarlos como episodios, se añade de cada video la pista del idioma indicado al episodio que ya tiene su video.
-              La pista se reconoce por su etiqueta o título (p. ej. «Latino»); si no coincide ninguna, se usa la primera. Se sube el archivo entero.
-            </span>
-          </span>
-        </label>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border border-line bg-surface-2 px-3 py-2.5">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={audioOnly}
+          aria-label="Usar los videos solo para extraer su audio"
+          disabled={uploading}
+          onClick={() => setAudioOnly((value) => !value)}
+          className={clsx(
+            'relative h-5 w-9 shrink-0 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            audioOnly ? 'bg-accent' : 'bg-line',
+          )}
+        >
+          <span className="absolute top-0.5 size-4 bg-white transition-[left]" style={{ left: audioOnly ? 'calc(100% - 1.125rem)' : '0.125rem' }} />
+        </button>
+
+        <div className="min-w-0 flex-1 basis-64">
+          <p className="text-sm font-semibold">Usar los videos solo para extraer su audio</p>
+          <p className="text-xs text-muted">
+            Se añade la pista de ese idioma al episodio que ya tiene video, en vez de publicar el video. Se sube el archivo entero.
+          </p>
+        </div>
 
         {audioOnly && (
-          <div className="w-40">
+          <div className="w-32">
             <Input full size="sm" name="extractLang" label="Idioma a extraer" placeholder="lat" value={extractLang} onChange={(event) => setExtractLang(event.target.value.trim().toLowerCase())} disabled={uploading} />
           </div>
         )}
