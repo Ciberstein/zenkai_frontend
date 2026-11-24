@@ -42,13 +42,14 @@ export const IconButton = ({ label, active = false, box = 'size-10', className =
 )
 
 // Una seccion sin nada que elegir no se pinta: quien la usa pasa [] en ese caso.
-export const Section = ({ title, items, value, onSelect }) => {
+export const Section = ({ title, items, value, onSelect, scroll = false }) => {
   if (!items.length) return null;
 
   return (
     <div className="flex flex-col py-2">
       <p className="px-3 pb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">{title}</p>
 
+      <div className={clsx('flex flex-col', scroll && 'max-h-52 overflow-y-auto overscroll-contain')}>
       {items.map((item) => (
         <button
           key={item.key}
@@ -65,6 +66,7 @@ export const Section = ({ title, items, value, onSelect }) => {
           {item.label}
         </button>
       ))}
+      </div>
     </div>
   )
 }
@@ -852,13 +854,13 @@ const PlayerControls = ({
 
           {menu && (
             <div
-              style={{ maxHeight: Math.max(140, stageHeight - 120) }}
+              style={{ maxHeight: `min(${Math.max(140, stageHeight - 120)}px, 70vh)` }}
               className="absolute bottom-full right-0 mb-8 w-60 divide-y sm:mb-12 divide-white/10 overflow-y-auto bg-black/92 text-white backdrop-blur-md"
             >
               {menu === 'tracks' && (
                 <>
                   <Section title="Audio" items={audio.tracks.length > 1 ? audio.tracks : []} value={audio.current} onSelect={onAudio} />
-                  <Section title="Subtítulos" items={captions.length > 1 ? captions : []} value={caption} onSelect={onCaption} />
+                  <Section title="Subtítulos" items={captions.length > 1 ? captions : []} value={caption} onSelect={onCaption} scroll />
                 </>
               )}
 
