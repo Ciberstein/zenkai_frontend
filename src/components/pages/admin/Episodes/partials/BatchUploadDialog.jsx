@@ -35,8 +35,17 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
   const [status, setStatus] = React.useState({});      // número de episodio → { state, percent, message }
   const [sent, setSent] = React.useState(0);
   const [over, setOver] = React.useState(false);
+  const [audioOnly, setAudioOnly] = React.useState(false);   // los videos se usan solo para sacar su audio
+  const [extractLang, setExtractLang] = React.useState('lat');
 
   const uploading = phase === 'uploading';
+
+  // Con «solo el audio», cada video pasa a ser un audio del idioma indicado: se sube el archivo y el
+  // servicio de conversión saca de él la pista de ese idioma (por su etiqueta o título, p. ej. «Latino»).
+  const view = React.useMemo(
+    () => (audioOnly ? files.map((item) => (item.kind === 'video' ? { ...item, kind: 'audio', fromVideo: true, lang: item.lang || extractLang } : item)) : files),
+    [files, audioOnly, extractLang],
+  );
 
   const byNumber = React.useMemo(() => new Map(episodes.map((episode) => [episode.number, episode])), [episodes]);
 
@@ -73,7 +82,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
   const groups = React.useMemo(() => {
     const map = new Map();
 
-    for (const item of files) {
+    for (const item of view) {
       const key = item.number ?? 'none';
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(item);
@@ -105,7 +114,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
 
         return { number, episode, items, problem, replaces: videos.length > 0 && Boolean(episode?.sources?.length), addons: videos.length === 0 };
       });
-  }, [files, byNumber]);
+  }, [view, byNumber]);
 
   const pending = groups.filter((group) => status[group.number]?.state !== 'done');
   const ready = pending.length > 0 && pending.every((group) => !group.problem);
@@ -209,7 +218,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
     setPhase('idle');
   };
 
-  const count = files.filter((item) => item.kind === 'video').length;
+  const count = view.filter((item) => item.kind === 'video').length;
 
   return (
     <Dialog
@@ -293,7 +302,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
                     <li key={item.id} className="flex flex-wrap items-end gap-2 px-3 py-2">
                       <div className="min-w-0 flex-1 basis-48">
                         <p className="truncate text-xs font-semibold">{item.file.name}</p>
-                        <p className="text-[11px] text-muted">{KIND_LABEL[item.kind]} · {megabytes(item.file.size)}</p>
+                        <p className="text-[11px] text-muted">{item.fromVideo ? 'Video · se extrae su audio' : KIND_LABEL[item.kind]} · {megabytes(item.file.size)}</p>
                       </div>
 
                       {item.kind !== 'video' && (
@@ -335,6 +344,25 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
           })}
         </ul>
       )}
+
+      <div className="flex flex-col gap-3 border border-line bg-surface-2 p-3">
+        <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+          <input type="checkbox" className="mt-0.5 size-4 accent-accent" checked={audioOnly} onChange={(event) => setAudioOnly(event.target.checked)} disabled={uploading} />
+          <span>
+            <span className="font-semibold">Usar los videos solo para extraer su audio</span>
+            <span className="block text-xs text-muted">
+              En vez de publicarlos como episodios, se añade de cada video la pista del idioma indicado al episodio que ya tiene su video.
+              La pista se reconoce por su etiqueta o título (p. ej. «Latino»); si no coincide ninguna, se usa la primera. Se sube el archivo entero.
+            </span>
+          </span>
+        </label>
+
+        {audioOnly && (
+          <div className="w-40">
+            <Input full size="sm" name="extractLang" label="Idioma a extraer" placeholder="lat" value={extractLang} onChange={(event) => setExtractLang(event.target.value.trim().toLowerCase())} disabled={uploading} />
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Input full name="server" label="Nombre del servidor" value={options.server} onChange={(event) => setOptions((prev) => ({ ...prev, server: event.target.value }))} disabled={uploading} />

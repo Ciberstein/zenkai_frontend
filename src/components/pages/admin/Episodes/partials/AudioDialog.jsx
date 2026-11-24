@@ -28,7 +28,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
   const [file, setFile] = React.useState(null);
   const [language, setLanguage] = React.useState('');
   const [offset, setOffset] = React.useState('0');
-  const [track, setTrack] = React.useState('1');
+  const [track, setTrack] = React.useState('');
   const [sent, setSent] = React.useState(0);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState(null);
@@ -37,7 +37,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
   const offsetMs = Number(offset);
   const validOffset = offset.trim() !== '' && Number.isInteger(offsetMs) && Math.abs(offsetMs) <= 60000;
   const trackNumber = Number(track);
-  const validTrack = /^\d+$/.test(track.trim()) && trackNumber >= 1 && trackNumber <= 64;
+  const validTrack = track.trim() === '' || (/^\d+$/.test(track.trim()) && trackNumber >= 1 && trackNumber <= 64);
   const ready = file && LANG.test(language) && validOffset && validTrack;
 
   const pick = (list) => {
@@ -60,7 +60,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
     setFile(null);
     setLanguage('');
     setOffset('0');
-    setTrack('1');
+    setTrack('');
     setSent(0);
     setError(null);
   };
@@ -88,7 +88,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
     setSent(0);
 
     try {
-      created = await uploads.createAudio(episode.id, { filename: file.name, size: file.size, language, offset: offsetMs, track: trackNumber });
+      created = await uploads.createAudio(episode.id, { filename: file.name, size: file.size, language, offset: offsetMs, ...(track.trim() ? { track: trackNumber } : {}) });
       await uploads.put(created.files[0].url, file, setSent);
       await uploads.complete(created.id);
 
@@ -175,12 +175,13 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
             full
             name="track"
             label="Pista"
+            placeholder="Auto"
             inputMode="numeric"
             value={track}
             onChange={(event) => setTrack(event.target.value.trim())}
             disabled={saving}
           />
-          <p className="text-xs text-muted">Pista de audio del archivo a usar. 1 es la primera.</p>
+          <p className="text-xs text-muted">Opcional. Sin número se elige la del idioma, o la primera.</p>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -204,7 +205,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
         </div>
       )}
 
-      {!validTrack && <p className="text-xs text-red-400">La pista es un número entero desde 1 (1 = la primera pista de audio del archivo).</p>}
+      {!validTrack && <p className="text-xs text-red-400">La pista es un número entero desde 1, o déjala vacía para elegirla sola.</p>}
       {offset.trim() !== '' && !validOffset && <p className="text-xs text-red-400">El desfase es un número entero de milisegundos, entre -60000 y 60000.</p>}
       {error && <p className="text-xs text-red-400">{error}</p>}
 
