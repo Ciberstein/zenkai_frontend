@@ -2,7 +2,7 @@ import React from 'react'
 import Hls from 'hls.js'
 import { useSelector } from 'react-redux'
 import player_service from '../../../../../services/player.services'
-import { audioLabel, languageName, matchLanguage, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
+import { audioLabel, matchLanguage, readPrefs, savePref, sourceLabel, subtitleName } from '../../../../../utils/player.util'
 import Icon from '../../../../shared/Icon'
 import PlayerControls, { IconButton, Section } from './PlayerControls'
 import PlayerTopBar from './PlayerTopBar'
@@ -203,7 +203,7 @@ const Player = ({
 
     instance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
       setHlsCaptions(instance.subtitleTracks.map((track, index) => ({
-        key: `hls:${index}`, label: (track.lang && languageName(track.lang, track.name)) || track.name || `Subtítulos ${index + 1}`, lang: track.lang,
+        key: `hls:${index}`, label: (track.lang && subtitleName(track.lang, track.name)) || track.name || `Subtítulos ${index + 1}`, lang: track.lang,
       })));
     });
 

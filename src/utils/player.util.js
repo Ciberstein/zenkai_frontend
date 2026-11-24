@@ -47,9 +47,8 @@ const ALIASES = {
   'es-419': 'Español (Latinoamérica)',
 };
 
-export const languageName = (code, fallback) => {
-  if (ALIASES[String(code).toLowerCase()]) return ALIASES[String(code).toLowerCase()];
-
+// Nombre del idioma según el navegador, sin alias.
+const intlName = (code, fallback) => {
   try {
     const name = new Intl.DisplayNames(['es'], { type: 'language' }).of(code);
     return name.charAt(0).toUpperCase() + name.slice(1);
@@ -57,6 +56,8 @@ export const languageName = (code, fallback) => {
     return fallback;
   }
 };
+
+export const languageName = (code, fallback) => ALIASES[String(code).toLowerCase()] ?? intlName(code, fallback);
 
 // "Wikimedia 480p · Subtitulado": como se nombra una fuente en los menus.
 export const sourceLabel = (item) =>
@@ -124,3 +125,13 @@ export const audioLabel = (track, fallback) =>
   || (track.lang && languageName(track.lang, track.name))
   || track.name
   || fallback;
+
+// Cómo se etiqueta una pista de subtítulos: el idioma sin región. "Español" ya cubre es, es-419, es-ES
+// o lat; las variantes solo se distinguen en los audios, donde un doblaje de cada región sí es distinto.
+const SUBTITLE_BASE = { lat: 'es' };
+
+export const subtitleName = (code, fallback) => {
+  const lower = String(code).toLowerCase();
+
+  return intlName(SUBTITLE_BASE[lower] ?? lower.split('-')[0], fallback);
+};

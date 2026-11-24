@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { API_ROUTES } from '../../../../../api/routes'
 import api from '../../../../../api/axios'
 import uploads from '../../../../../services/uploads.services'
-import { languageName } from '../../../../../utils/player.util'
+import { subtitleName } from '../../../../../utils/player.util'
 import { Button, Dialog, Input, Switch } from '../../../../material'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ const SubtitleDialog = ({ episode, open, onClose, onSaved }) => {
   // El nombre que ve el usuario sale del idioma, salvo que lo haya escrito el a mano.
   const changeLanguage = (code) => {
     setLanguage(code);
-    if (!labelTouched && /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(code)) setLabel(languageName(code, code));
+    if (!labelTouched && /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(code)) setLabel(subtitleName(code, code));
   };
 
   const pick = (list) => {
