@@ -51,7 +51,7 @@ const Tag = ({ tone = 'plain', children }) => (
 )
 
 // Una sección del panel: cabecera con título, recuento y acciones, y debajo sus filas.
-const Card = ({ title, count, actions = null, notice = null, empty, children }) => (
+const Card = ({ title, count, actions = null, notice = null, empty, list = 'divide-y divide-line', children }) => (
   <section className="flex flex-col border border-line bg-surface">
     <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3">
       <h3 className="font-display text-sm font-bold uppercase tracking-[0.1em]">{title}</h3>
@@ -62,13 +62,13 @@ const Card = ({ title, count, actions = null, notice = null, empty, children }) 
 
     {notice && <p className="border-b border-line bg-surface-2/50 px-4 py-2 text-xs text-muted">{notice}</p>}
 
-    {count ? <ul className="divide-y divide-line">{children}</ul> : <p className="px-4 py-6 text-center text-sm text-muted">{empty}</p>}
+    {count ? <ul className={list}>{children}</ul> : <p className="px-4 py-6 text-center text-sm text-muted">{empty}</p>}
   </section>
 )
 
 // Una fila: nombre y línea de datos a la izquierda, acciones a la derecha.
 const Row = ({ title, meta, actions = null }) => (
-  <li className="flex min-h-16 items-center gap-3 px-4 py-3">
+  <li className="flex min-h-16 items-center gap-3 bg-surface px-4 py-3">
     <div className="min-w-0 flex-1">
       <div className="truncate text-sm font-semibold">{title}</div>
       <p className={clsx('mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted', MONO)}>{meta}</p>
@@ -259,7 +259,11 @@ const SubtitleCard = ({ subtitles, onChanged, onRemove }) => {
   };
 
   return (
-    <Card title="Subtítulos" count={subtitles.length} notice={error} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
+    <Card
+      title="Subtítulos"
+      count={subtitles.length}
+      list="grid max-h-[32rem] gap-px overflow-y-auto bg-line lg:grid-cols-2"
+      notice={error} empty="Ninguno. Se añaden al subir el video o con «Añadir subtítulos».">
       {subtitles.map((subtitle) => (
         <Row
           key={subtitle.id}
@@ -304,14 +308,16 @@ const SubtitleCard = ({ subtitles, onChanged, onRemove }) => {
 // ─── EpisodeDetails ───────────────────────────────────────────────────────────
 
 // El panel que se despliega bajo un episodio: fuentes, audios, marcas y subtítulos, cada uno en
-// su tarjeta. En pantallas anchas van de dos en dos; en móvil, una debajo de otra.
+// su tarjeta. Fuentes y marcas van en una columna y audios en otra; los subtítulos, que pueden ser decenas, ocupan todo el ancho en dos columnas con scroll.
 const EpisodeDetails = ({ episode, published, audio, onSegment, onChanged, onRemoveSource, onRemoveSubtitle }) => {
 
   const sources = episode.sources ?? [];
   const subtitles = episode.subtitles ?? [];
 
   return (
-    <div className="grid items-start gap-4 border-t border-line bg-bg/40 p-4 sm:p-5 lg:grid-cols-2">
+    <div className="flex flex-col gap-4 border-t border-line bg-bg/40 p-4 sm:p-5">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
       <Card title="Fuentes" count={sources.length} empty="Ninguna todavía. Sube un video o añade una URL.">
         {sources.map((source) => (
           <Row
@@ -329,9 +335,11 @@ const EpisodeDetails = ({ episode, published, audio, onSegment, onChanged, onRem
         ))}
       </Card>
 
-      {published && <AudioCard episodeId={episode.id} {...audio} />}
-
       {sources.length > 0 && <SegmentCard episode={episode} onSegment={onSegment} onChanged={onChanged} />}
+        </div>
+
+        {published && <AudioCard episodeId={episode.id} {...audio} />}
+      </div>
 
       <SubtitleCard subtitles={subtitles} onChanged={onChanged} onRemove={onRemoveSubtitle} />
     </div>

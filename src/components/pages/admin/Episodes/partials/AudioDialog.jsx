@@ -143,7 +143,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
         ) : (
           <>
             <span className="text-sm font-semibold">Suelta aquí el audio del doblaje</span>
-            <span className="text-xs text-muted">o haz clic para elegirlo · audio o video; si trae varias pistas de audio, indica abajo cuál usar</span>
+            <span className="text-xs text-muted">o haz clic para elegirlo · audio o video con su pista de audio</span>
           </>
         )}
 
@@ -156,35 +156,45 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Input
-          full
-          name="language"
-          label="Código de idioma (es, es-419, en…)"
-          value={language}
-          onChange={(event) => setLanguage(event.target.value.trim().toLowerCase())}
-          disabled={saving}
-        />
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <Input
+            full
+            name="language"
+            label="Idioma"
+            placeholder="es-419"
+            value={language}
+            onChange={(event) => setLanguage(event.target.value.trim().toLowerCase())}
+            disabled={saving}
+          />
+          <p className="text-xs text-muted">Código del idioma: es, es-419, en, ja…</p>
+        </div>
 
-        <Input
-          full
-          name="track"
-          label="Pista de audio del archivo"
-          inputMode="numeric"
-          value={track}
-          onChange={(event) => setTrack(event.target.value.trim())}
-          disabled={saving}
-        />
+        <div className="flex flex-col gap-1.5">
+          <Input
+            full
+            name="track"
+            label="Pista"
+            inputMode="numeric"
+            value={track}
+            onChange={(event) => setTrack(event.target.value.trim())}
+            disabled={saving}
+          />
+          <p className="text-xs text-muted">Pista de audio del archivo a usar. 1 es la primera.</p>
+        </div>
 
-        <Input
-          full
-          name="offset"
-          label="Desfase en ms (opcional)"
-          inputMode="numeric"
-          value={offset}
-          onChange={(event) => setOffset(event.target.value.trim())}
-          disabled={saving}
-        />
+        <div className="flex flex-col gap-1.5">
+          <Input
+            full
+            name="offset"
+            label="Desfase (ms)"
+            inputMode="numeric"
+            value={offset}
+            onChange={(event) => setOffset(event.target.value.trim())}
+            disabled={saving}
+          />
+          <p className="text-xs text-muted">Opcional. Positivo retrasa el audio, negativo lo adelanta.</p>
+        </div>
       </div>
 
       {saving && (
@@ -200,8 +210,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
 
       <p className="text-xs text-muted">
         El audio se convierte en segundo plano y aparece en el selector de audio del reproductor. Si el episodio ya tiene
-        un audio en ese idioma, se reemplaza. El desfase corrige un doblaje que no cuadra con el video: positivo lo retrasa,
-        negativo lo adelanta.
+        un audio en ese idioma, se reemplaza.
       </p>
     </Dialog>
   )
