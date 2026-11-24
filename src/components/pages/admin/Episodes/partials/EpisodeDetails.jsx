@@ -54,7 +54,7 @@ const Tag = ({ tone = 'plain', children }) => (
 const Card = ({ title, count, actions = null, notice = null, empty, list = 'divide-y divide-line', children }) => (
   <section className="flex flex-col border border-line bg-surface">
     <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3">
-      <h3 className="font-display text-sm font-bold uppercase tracking-[0.1em]">{title}</h3>
+      <h3 className="font-display text-sm font-bold uppercase tracking-widest">{title}</h3>
       <span className="tnum grid h-5 min-w-5 place-items-center bg-surface-2 px-1.5 font-mono text-[11px] text-fg/70">{count}</span>
 
       {actions && <div className="ml-auto flex flex-wrap gap-1.5">{actions}</div>}

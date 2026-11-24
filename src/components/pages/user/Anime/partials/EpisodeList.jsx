@@ -26,8 +26,8 @@ const formatDate = (iso) => {
 
 // ─── EpisodeCard ──────────────────────────────────────────────────────────────
 
-// Miniatura 16:9 con el progreso pegado abajo, y debajo el numero y el titulo, la
-// descripcion si la hay y los datos. La miniatura del episodio se usa cuando existe;
+// Miniatura 16:9 con el progreso pegado abajo; el numero, el titulo y los datos van
+// dentro del recuadro, sobre un degradado al pie. La miniatura del episodio se usa cuando existe;
 // si no, la portada de la serie desenfocada con el numero grande, de modo que la lista
 // se ve cuidada aunque aun no haya imagenes por episodio.
 const EpisodeCard = ({ malId, episode, fallback }) => {
@@ -49,9 +49,9 @@ const EpisodeCard = ({ malId, episode, fallback }) => {
     <li>
       <Link
         to={`/watch/${malId}/${episode.number}`}
-        className="group/ep flex flex-col gap-3 outline-none focus-visible:*:first:ring-2 focus-visible:*:first:ring-accent"
+        className="group/ep relative block aspect-video overflow-hidden bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <div className="relative aspect-video overflow-hidden bg-surface-2">
+        <div className="absolute inset-0">
           {episode.thumbnail ? (
             <img
               src={episode.thumbnail}
@@ -86,7 +86,7 @@ const EpisodeCard = ({ malId, episode, fallback }) => {
             </>
           )}
 
-          <span aria-hidden="true" className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-black/20" />
+          <span aria-hidden="true" className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-black/20" />
 
           {/* Al pasar el cursor asoma la accion, sin mover nada de sitio */}
           <span className="absolute inset-0 grid place-items-center bg-black/35 opacity-0 transition-opacity duration-300 group-hover/ep:opacity-100 group-focus-visible/ep:opacity-100">
@@ -107,12 +107,6 @@ const EpisodeCard = ({ malId, episode, fallback }) => {
             </span>
           )}
 
-          {remaining && (
-            <span className="absolute bottom-2.5 right-2 bg-black/80 px-2 py-0.5 font-mono text-[11px] tracking-wide text-white tnum">
-              Quedan {remaining} min
-            </span>
-          )}
-
           {inProgress && (
             <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-white/25">
               <span className="block h-full bg-accent shadow-[0_0_8px_var(--accent)]" style={{ width: `${played}%` }} />
@@ -120,17 +114,16 @@ const EpisodeCard = ({ malId, episode, fallback }) => {
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <p className={clsx('line-clamp-1 text-[15px] font-semibold transition-colors group-hover/ep:text-accent-text', done && 'text-muted')}>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-3 pb-3 pt-8">
+          <p className={clsx('line-clamp-1 text-[15px] font-semibold text-white transition-colors group-hover/ep:text-accent-text [text-shadow:0_1px_6px_rgb(0_0_0/0.7)]', done && 'text-white/60')}>
             <span className="tnum">{episode.number}.</span> {name}
           </p>
 
-          {episode.synopsis && <p className="line-clamp-2 text-sm leading-snug text-muted">{episode.synopsis}</p>}
-
-          {(length || date) && (
-            <p className="flex flex-wrap items-center gap-x-3 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
+          {(length || date || remaining) && (
+            <p className="flex flex-wrap items-center gap-x-3 font-mono text-[11px] uppercase tracking-[0.12em] text-white/70">
               {length && <span className="tnum">{length} min</span>}
               {date && <span>{date}</span>}
+              {remaining && <span className="tnum text-accent-text">Quedan {remaining} min</span>}
             </p>
           )}
         </div>
