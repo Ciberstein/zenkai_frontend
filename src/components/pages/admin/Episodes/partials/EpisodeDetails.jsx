@@ -124,7 +124,7 @@ const AudioCard = ({ episodeId, tracks, error, setError, load }) => {
   };
 
   return (
-    <Card title="Audios" count={tracks?.length ?? 0} notice={error} empty={error ? 'No se pudieron leer los audios.' : tracks ? 'Ninguno.' : 'Cargando…'}>
+    <Card title="Audios" count={tracks?.length ?? 0} list="max-h-[32rem] divide-y divide-line overflow-y-auto" notice={error}empty={error ? 'No se pudieron leer los audios.' : tracks ? 'Ninguno.' : 'Cargando…'}>
       {(tracks ?? []).map((track) => (
         <Row
           key={track.dir}

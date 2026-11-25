@@ -859,7 +859,7 @@ const PlayerControls = ({
             >
               {menu === 'tracks' && (
                 <>
-                  <Section title="Audio" items={audio.tracks.length > 1 ? audio.tracks : []} value={audio.current} onSelect={onAudio} />
+                  <Section title="Audio" items={audio.tracks.length > 1 ? audio.tracks : []} value={audio.current} onSelect={onAudio} scroll />
                   <Section title="Subtítulos" items={captions.length > 1 ? captions : []} value={caption} onSelect={onCaption} scroll />
                 </>
               )}
