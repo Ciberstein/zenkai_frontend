@@ -114,7 +114,7 @@ const UploadDialog = ({ episode, open, onClose, onDone, initialFiles = null }) =
       let done = 0;
 
       for (let index = 0; index < files.length; index += 1) {
-        await uploads.put(created.files[index].url, files[index], (loaded) => setSent(done + loaded));
+        await uploads.put(created.files[index], files[index], (loaded) => setSent(done + loaded));
         done += files[index].size;
         setSent(done);
       }

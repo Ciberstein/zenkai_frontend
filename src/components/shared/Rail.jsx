@@ -33,7 +33,8 @@ const Arrow = ({ side, disabled, onClick }) => (
 // Fila horizontal con scroll nativo y snap: mas fluido en movil que un carrusel
 // con JS, y no rompe el teclado ni el lector de pantalla. Las flechas solo
 // aparecen en escritorio y solo cuando hay hacia donde ir.
-const Rail = ({ title, items = [], to = null, ranked = false, render = null, eyebrow = null }) => {
+// `itemClass` cambia el ancho de cada elemento (por defecto el de un cartel vertical).
+const Rail = ({ title, items = [], to = null, ranked = false, render = null, eyebrow = null, itemClass = null }) => {
 
   const scroller = React.useRef(null);
   const [edge, setEdge] = React.useState({ start: true, end: false });
@@ -97,7 +98,7 @@ const Rail = ({ title, items = [], to = null, ranked = false, render = null, eye
                 'shrink-0 snap-start',
                 ranked
                   ? 'relative w-46 sm:w-52 md:w-60'
-                  : 'w-35 sm:w-40 md:w-44 lg:w-48',
+                  : (itemClass ?? 'w-35 sm:w-40 md:w-44 lg:w-48'),
               )}
             >
               {ranked && (

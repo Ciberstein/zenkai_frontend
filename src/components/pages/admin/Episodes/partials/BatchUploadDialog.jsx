@@ -24,7 +24,7 @@ let counter = 0;
 // 05.lat.m4a…) y se puede corregir antes de empezar. Un episodio con video se sube entero (con sus
 // subtítulos y audios dentro); uno sin video añade sus subtítulos y audios al video que ya tiene
 // publicado. Se sube un episodio detrás de otro, con el mismo flujo que las subidas individuales.
-const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
+const BatchUploadDialog = ({ episodes, animeTitle = null, open, onClose, onDone }) => {
 
   const input = React.useRef(null);
 
@@ -173,7 +173,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
           });
 
           for (let index = 0; index < ordered.length; index += 1) {
-            await uploads.put(created.files[index].url, ordered[index].file, progress);
+            await uploads.put(created.files[index], ordered[index].file, progress);
             groupDone += ordered[index].file.size;
           }
 
@@ -192,7 +192,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
               });
             } else {
               created = await uploads.createAudio(group.episode.id, { filename: item.file.name, size: item.file.size, language: item.lang, offset: 0 });
-              await uploads.put(created.files[0].url, item.file, progress);
+              await uploads.put(created.files[0], item.file, progress);
               await uploads.complete(created.id);
               created = null;
             }
@@ -237,6 +237,13 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
         </>
       }
     >
+      {animeTitle && (
+        <p className="flex items-baseline gap-2 border-l-2 border-accent bg-surface-2 px-3 py-2">
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Anime</span>
+          <span className="min-w-0 truncate text-sm font-semibold">{animeTitle}</span>
+        </p>
+      )}
+
       <div
         role="button"
         tabIndex={0}
@@ -300,30 +307,35 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
 
                 <ul className="divide-y divide-line">
                   {group.items.map((item) => (
-                    <li key={item.id} className="flex flex-wrap items-end gap-2 px-3 py-2">
+                    <li key={item.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
                       <div className="min-w-0 flex-1 basis-48">
                         <p className="truncate text-xs font-semibold">{item.file.name}</p>
                         <p className="text-[11px] text-muted">{item.fromVideo ? 'Video · se extrae su audio' : KIND_LABEL[item.kind]} · {megabytes(item.file.size)}</p>
                       </div>
 
                       {item.kind !== 'video' && (
-                        <div className="w-24">
-                          <Input full size="sm" name={`lang-${item.id}`} label="Idioma" placeholder="es" value={item.lang} onChange={(event) => patch(item.id, { lang: event.target.value.trim().toLowerCase() })} disabled={uploading} />
+                        <div className="flex items-center gap-2">
+                          <label htmlFor={`lang-${item.id}`} className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Idioma</label>
+                          <div className="w-20">
+                            <Input full size="sm" name={`lang-${item.id}`} placeholder="es" value={item.lang} onChange={(event) => patch(item.id, { lang: event.target.value.trim().toLowerCase() })} disabled={uploading} />
+                          </div>
                         </div>
                       )}
 
-                      <div className="w-24">
-                        <Input
-                          full
-                          size="sm"
-                          type="number"
-                          min="0"
-                          name={`number-${item.id}`}
-                          label="Episodio"
-                          value={item.number ?? ''}
-                          onChange={(event) => patch(item.id, { number: event.target.value === '' ? null : Number(event.target.value) })}
-                          disabled={uploading || state?.state === 'done'}
-                        />
+                      <div className="flex items-center gap-2">
+                        <label htmlFor={`number-${item.id}`} className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Episodio</label>
+                        <div className="w-20">
+                          <Input
+                            full
+                            size="sm"
+                            type="number"
+                            min="0"
+                            name={`number-${item.id}`}
+                            value={item.number ?? ''}
+                            onChange={(event) => patch(item.id, { number: event.target.value === '' ? null : Number(event.target.value) })}
+                            disabled={uploading || state?.state === 'done'}
+                          />
+                        </div>
                       </div>
 
                       <button
@@ -331,7 +343,7 @@ const BatchUploadDialog = ({ episodes, open, onClose, onDone }) => {
                         disabled={uploading || state?.state === 'done'}
                         onClick={() => remove(item.id)}
                         aria-label={`Quitar ${item.file.name}`}
-                        className="mb-1 px-2 text-sm text-muted transition-colors hover:bg-red-500/15 hover:text-red-400 disabled:opacity-40"
+                        className="px-2 py-1 text-sm text-muted transition-colors hover:bg-red-500/15 hover:text-red-400 disabled:opacity-40"
                       >
                         ✕
                       </button>

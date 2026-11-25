@@ -31,6 +31,7 @@ export const EpisodesPage = () => {
   const { id } = useParams();
 
   const [episodes, setEpisodes] = React.useState([]);
+  const [anime, setAnime] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
   const [subtitling, setSubtitling] = React.useState(null);
   const [dubbing, setDubbing] = React.useState(null);
@@ -50,6 +51,11 @@ export const EpisodesPage = () => {
   }, [id]);
 
   React.useEffect(() => { load() }, [load]);
+
+  // Nombre del anime que se esta gestionando (se muestra arriba para no perderse).
+  React.useEffect(() => {
+    api.get(`${API_ROUTES.ADMIN}/anime/${id}`).then((res) => setAnime(res.data)).catch(() => setAnime(null));
+  }, [id]);
 
   // Mientras algo se esta convirtiendo, se refresca solo para ver el avance y el resultado.
   const converting = episodes.some((episode) => ['queued', 'processing'].includes(latestUpload(episode)?.status));
@@ -145,10 +151,10 @@ export const EpisodesPage = () => {
             Catálogo
           </Link>
 
-          <h1 className="text-4xl">Episodios</h1>
+          <h1 className="text-4xl">{anime?.title ?? 'Episodios'}</h1>
 
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-            {episodes.length} {episodes.length === 1 ? 'episodio' : 'episodios'} · {withVideo} con video
+            {anime ? 'Episodios · ' : ''}{episodes.length} {episodes.length === 1 ? 'episodio' : 'episodios'} · {withVideo} con video
             {busyCount > 0 && <span className="text-accent-text"> · {busyCount} en proceso</span>}
           </p>
         </div>
@@ -227,6 +233,7 @@ export const EpisodesPage = () => {
       {batching && (
         <BatchUploadDialog
           episodes={episodes}
+          animeTitle={anime?.title}
           open
           onClose={() => setBatching(false)}
           onDone={load}

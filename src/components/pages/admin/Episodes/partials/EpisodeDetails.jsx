@@ -100,7 +100,7 @@ const AudioCard = ({ episodeId, tracks, error, setError, load }) => {
     setSaving(true);
 
     try {
-      await uploads.renameAudio(episodeId, editing.dir, editing.value.trim());
+      await uploads.renameAudio(episodeId, editing.dir, editing.value.trim(), editing.lang.trim());
       setEditing(null);
       setError(null);
       load();
@@ -124,7 +124,7 @@ const AudioCard = ({ episodeId, tracks, error, setError, load }) => {
   };
 
   return (
-    <Card title="Audios" count={tracks?.length ?? 0} list="max-h-[32rem] divide-y divide-line overflow-y-auto" notice={error}empty={error ? 'No se pudieron leer los audios.' : tracks ? 'Ninguno.' : 'Cargando…'}>
+    <Card title="Audios" count={tracks?.length ?? 0} list="max-h-[32rem] divide-y divide-line overflow-y-auto" notice={error} empty={error ? 'No se pudieron leer los audios.' : tracks ? 'Ninguno.' : 'Cargando…'}>
       {(tracks ?? []).map((track) => (
         <Row
           key={track.dir}
@@ -134,20 +134,29 @@ const AudioCard = ({ episodeId, tracks, error, setError, load }) => {
                 autoFocus
                 value={editing.value}
                 maxLength={40}
-                placeholder={audioLabel({ lang: track.lang }, track.dir)}
-                onChange={(event) => setEditing({ dir: track.dir, value: event.target.value })}
+                placeholder={audioLabel({ lang: editing.lang || track.lang }, track.dir)}
+                onChange={(event) => setEditing({ ...editing, value: event.target.value })}
                 onKeyDown={(event) => event.key === 'Escape' && setEditing(null)}
                 aria-label="Nombre del audio"
                 className="h-8 min-w-0 flex-1 border border-line bg-surface-2 px-2 text-sm font-semibold outline-none focus:border-accent"
               />
-              <Action type="submit" accent disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</Action>
+              <input
+                value={editing.lang}
+                maxLength={12}
+                placeholder="Idioma"
+                onChange={(event) => setEditing({ ...editing, lang: event.target.value })}
+                onKeyDown={(event) => event.key === 'Escape' && setEditing(null)}
+                aria-label="Código de idioma"
+                className="h-8 w-20 border border-line bg-surface-2 px-2 text-sm outline-none focus:border-accent"
+              />
+              <Action type="submit" accent disabled={saving || !/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(editing.lang.trim())}>{saving ? 'Guardando…' : 'Guardar'}</Action>
               <Action onClick={() => setEditing(null)}>Cancelar</Action>
             </form>
           ) : audioLabel(track, track.lang ?? track.dir)}
           meta={<><span>{track.dir}</span>{track.default && <Tag tone="accent">Por defecto</Tag>}</>}
           actions={editing?.dir === track.dir ? null : (
             <>
-              <Action onClick={() => setEditing({ dir: track.dir, value: track.name ?? '' })}>Renombrar</Action>
+              <Action onClick={() => setEditing({ dir: track.dir, value: track.name ?? '', lang: track.lang ?? '' })}>Renombrar</Action>
               {!track.default && <Action onClick={() => makeDefault(track)}>Predeterminar</Action>}
               {tracks.length > 1 && <RemoveButton label={`Quitar el audio ${track.dir}`} onClick={() => remove(track)} />}
             </>

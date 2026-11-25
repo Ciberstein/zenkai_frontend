@@ -89,7 +89,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
 
     try {
       created = await uploads.createAudio(episode.id, { filename: file.name, size: file.size, language, offset: offsetMs, ...(track.trim() ? { track: trackNumber } : {}) });
-      await uploads.put(created.files[0].url, file, setSent);
+      await uploads.put(created.files[0], file, setSent);
       await uploads.complete(created.id);
 
       reset();
