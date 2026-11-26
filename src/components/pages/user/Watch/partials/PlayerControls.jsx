@@ -5,6 +5,7 @@ import Icon from '../../../../shared/Icon'
 import PlayerTopBar from './PlayerTopBar'
 import ShortcutsGuide from './ShortcutsGuide'
 import { isIOS, isStandalone } from '../../../../../utils/install'
+import { isTV, remoteKey } from '../../../../../utils/tv'
 import { captionCss, formatTime, readCaptionStyle, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -543,7 +544,36 @@ const PlayerControls = ({
       const node = video.current;
       let handled = true;
 
+      // Control remoto de TV: teclas multimedia, y las flechas sobre un boton mueven el foco.
+      const remote = remoteKey(event);
+      if (remote) {
+        switch (remote) {
+          case 'play': if (node?.paused) togglePlay(); break;
+          case 'pause': if (node && !node.paused) togglePlay(); break;
+          case 'playpause': togglePlay(); break;
+          case 'forward': skip(SKIP); break;
+          case 'rewind': skip(-SKIP); break;
+          default: handled = false;
+        }
+        if (handled) { event.preventDefault(); poke(); }
+        return;
+      }
+
+      if (isTV && event.key.startsWith('Arrow')) {
+        poke();
+        const vertical = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+        // Sobre un boton (o arriba/abajo en la barra) las flechas pasan al foco espacial;
+        // sobre el video, arriba/abajo llevan a los controles.
+        if (onButton || (vertical && target.getAttribute?.('role') === 'slider')) return;
+        if (vertical) {
+          event.preventDefault();
+          el.querySelector('button[aria-label*="(k)"]')?.focus({ preventScroll: true });
+          return;
+        }
+      }
+
       switch (event.key) {
+        case 'Enter': if (onButton || target.getAttribute?.('role') === 'slider') { handled = false; break; } togglePlay(); break;
         case ' ': if (onButton) { handled = false; break; } togglePlay(); break;
         case 'k': togglePlay(); break;
         case 'ArrowLeft': skip(-5); break;

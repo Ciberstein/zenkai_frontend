@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zenkai</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #05060b; color: #eef1ff; font-family: sans-serif; }
+      body { display: grid; place-items: center; text-align: center; }
+      img { width: 160px; height: 160px; }
+      h1 { margin: 24px 0 8px; font-size: 44px; letter-spacing: 0.2em; }
+      p { margin: 0; font-size: 26px; color: #8b92ab; }
+      button { margin-top: 32px; padding: 14px 40px; font-size: 26px; border: 0; background: #fcee0a; color: #07070a; }
+      button:focus { outline: 4px solid #fff; outline-offset: 4px; }
+      [hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="icon.png" alt="" />
+      <h1>ZENKAI</h1>
+      <p id="status">Cargando…</p>
+      <button id="retry" hidden>Reintentar</button>
+    </main>
+
+    <script>
+      // La app es solo un marco: carga la web publicada, asi se actualiza sin reempaquetar.
+      var SITE = 'https://zenkai.cyberstein.dev';
+
+      var status = document.getElementById('status');
+      var retry = document.getElementById('retry');
+
+      function go() {
+        retry.hidden = true;
+        status.textContent = 'Cargando…';
+        fetch(SITE + '/favicon.svg', { mode: 'no-cors', cache: 'no-store' })
+          .then(function () { window.location.replace(SITE + '/?tv=1'); })
+          .catch(function () {
+            status.textContent = 'Sin conexión. Revisa la red de la TV.';
+            retry.hidden = false;
+            retry.focus();
+          });
+      }
+
+      retry.addEventListener('click', go);
+      document.addEventListener('keydown', function (e) {
+        if (e.keyCode === 10009) { try { tizen.application.getCurrentApplication().exit(); } catch (err) {} }
+      });
+      go();
+    </script>
+  </body>
+</html>

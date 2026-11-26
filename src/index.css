@@ -321,3 +321,29 @@
     transform-origin: top left;
   }
 }
+
+/* ─── Modo TV ─────────────────────────────────────────────────────────────────
+   Se ve a 3 metros y se maneja con flechas: todo un poco mas grande, el foco
+   siempre visible (aqui el hover no existe) y sin cursor. */
+html.tv {
+  font-size: 125%;
+  cursor: none;
+}
+
+html.tv *:focus {
+  outline: 3px solid var(--accent) !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 28%, transparent);
+  transition: transform 0.15s var(--ease-out-expo);
+}
+
+html.tv a:focus,
+html.tv [role="button"]:focus {
+  transform: scale(1.04);
+}
+
+/* El volumen aparece al pasar el cursor: con control remoto siempre queda abierto. */
+html.tv .zk-range {
+  width: 6rem;
+  opacity: 1;
+}
