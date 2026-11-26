@@ -131,8 +131,10 @@ const EpisodeRow = ({
               <Button color="ghost" size="sm" onClick={() => onRetry(upload.id)}>Reintentar</Button>
               <Button color="ghost" size="sm" onClick={() => onDiscard(upload.id)}>Descartar</Button>
             </>
+          ) : busy ? (
+            <Button color="ghost" size="sm" onClick={() => onDiscard(upload.id)}>Cancelar</Button>
           ) : (
-            <Button size="sm" disabled={busy} onClick={() => onUpload(episode)}>
+            <Button size="sm" onClick={() => onUpload(episode)}>
               ↑<span className="hidden sm:inline"> Subir video</span>
             </Button>
           )}

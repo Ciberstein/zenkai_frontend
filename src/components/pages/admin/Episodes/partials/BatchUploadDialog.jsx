@@ -141,6 +141,7 @@ const BatchUploadDialog = ({ episodes, animeTitle = null, open, onClose, onDone 
 
   // Un episodio detrás de otro: subir varios a la vez repartiría la conexión y los dejaría todos a medias.
   const start = async () => {
+    uploads.begin();
     setPhase('uploading');
     setSent(0);
 
@@ -209,6 +210,9 @@ const BatchUploadDialog = ({ episodes, animeTitle = null, open, onClose, onDone 
         if (created) uploads.remove(created.id).catch(() => {});
 
         setStatus((prev) => ({ ...prev, [group.number]: { state: 'error', message: err.response?.data?.message ?? err.message } }));
+
+        // Cancelar corta toda la tanda, no solo este episodio.
+        if (err.cancelled) break;
       }
 
       done += groupTotal;
@@ -228,7 +232,7 @@ const BatchUploadDialog = ({ episodes, animeTitle = null, open, onClose, onDone 
       title="Subir varios episodios (videos, subtítulos y audios)"
       actions={
         <>
-          <Button color="ghost" size="sm" disabled={uploading} onClick={close}>{finished ? 'Cerrar' : 'Cancelar'}</Button>
+          <Button color="ghost" size="sm" onClick={uploading ? uploads.cancel : close}>{uploading ? 'Cancelar subida' : finished ? 'Cerrar' : 'Cancelar'}</Button>
           {!finished && (
             <Button size="sm" disabled={!ready} loading={uploading} onClick={start}>
               {failed ? 'Reintentar los que fallaron' : `Subir y publicar${pending.length ? ` (${pending.length})` : ''}`}

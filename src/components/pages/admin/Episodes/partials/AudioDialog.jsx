@@ -83,6 +83,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
   const onSubmit = async () => {
     let created = null;
 
+    uploads.begin();
     setSaving(true);
     setError(null);
     setSent(0);
@@ -96,7 +97,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
       onDone();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message ?? err.message);
+      setError(err.cancelled ? null : (err.response?.data?.message ?? err.message));
       // Si se creo el trabajo pero la subida fallo, no se deja a medias en el servidor.
       if (created) uploads.remove(created.id).catch(() => {});
     } finally {
@@ -114,7 +115,7 @@ const AudioDialog = ({ episode, open, onClose, onDone }) => {
       title={`Añadir audio · Episodio ${episode?.number}`}
       actions={
         <>
-          <Button color="ghost" size="sm" disabled={saving} onClick={close}>Cancelar</Button>
+          <Button color="ghost" size="sm" onClick={saving ? uploads.cancel : close}>{saving ? 'Cancelar subida' : 'Cancelar'}</Button>
           <Button size="sm" disabled={!ready} loading={saving} onClick={onSubmit}>
             Subir y añadir
           </Button>

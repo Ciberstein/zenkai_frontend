@@ -6,19 +6,52 @@ const base = `${API_ROUTES.ADMIN}/anime`;
 // Subida directa al bucket con la URL firmada que da la API. Se usa XMLHttpRequest
 // y no fetch porque fetch todavia no informa del progreso de subida. `body` es el archivo
 // entero o un trozo de el (una parte de una subida grande).
+// Si el envio deja de avanzar este tiempo, se corta: una conexion colgada no debe dejar la subida
+// "en curso" para siempre.
+const STALL_MS = 90 * 1000;
+
+// Subidas en vuelo, para poder cancelarlas desde la interfaz.
+const inflight = new Set();
+let stopped = false;
+
+const cancelled = () => Object.assign(new Error('Subida cancelada'), { cancelled: true });
+
 const send = (url, body, name, onProgress = () => {}) => new Promise((resolve, reject) => {
+  if (stopped) return reject(cancelled());
+
   const xhr = new XMLHttpRequest();
+  let timer = null;
+  let stalled = false;
+
+  const arm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { stalled = true; xhr.abort(); }, STALL_MS);
+  };
+  const finish = () => { clearTimeout(timer); inflight.delete(xhr); };
 
   xhr.open('PUT', url);
-  xhr.upload.onprogress = (event) => event.lengthComputable && onProgress(event.loaded);
+  inflight.add(xhr);
+  arm();
 
-  xhr.onload = () => (xhr.status >= 200 && xhr.status < 300
-    ? resolve()
-    : reject(new Error(`El almacenamiento rechazó "${name}" (${xhr.status})`)));
+  xhr.upload.onprogress = (event) => { arm(); if (event.lengthComputable) onProgress(event.loaded); };
+  // Ya enviado todo: lo que falta es la respuesta del almacenamiento, no hay nada que vigilar.
+  xhr.upload.onload = () => clearTimeout(timer);
 
-  xhr.onerror = () => reject(new Error(
-    `No se pudo subir "${name}". Revisa que el bucket de subidas permita PUT desde esta web (CORS) y que haya conexión.`,
-  ));
+  xhr.onload = () => {
+    finish();
+    if (xhr.status >= 200 && xhr.status < 300) resolve();
+    else reject(new Error(`El almacenamiento rechazó "${name}" (${xhr.status})`));
+  };
+
+  xhr.onabort = () => {
+    finish();
+    reject(stalled ? new Error(`"${name}" dejó de avanzar (sin datos en ${STALL_MS / 1000} s). Revisa la conexión.`) : cancelled());
+  };
+
+  xhr.onerror = () => {
+    finish();
+    reject(new Error(`No se pudo subir "${name}". Revisa que el bucket de subidas permita PUT desde esta web (CORS) y que haya conexión.`));
+  };
 
   xhr.send(body);
 });
@@ -52,7 +85,7 @@ const sendParts = async (file, { parts, partSize }, onProgress) => {
           loaded[index] = 0;
           report();
 
-          if (attempt >= RETRIES) { failed = err; return; }
+          if (err.cancelled || attempt >= RETRIES) { failed = err; return; }
 
           await wait(1000 * attempt);
         }
@@ -71,6 +104,10 @@ const put = (target, file, onProgress = () => {}) => (
 );
 
 const uploads = {
+  // Antes de una tanda de subidas: quita la marca de una cancelacion anterior.
+  begin: () => { stopped = false; },
+  // Corta todo lo que se esta enviando y hace fallar lo que venga con "Subida cancelada".
+  cancel: () => { stopped = true; [...inflight].forEach((xhr) => xhr.abort()); },
   create: (episodeId, body) => api.post(`${base}/episodes/${episodeId}/uploads`, body).then((res) => res.data),
   complete: (id) => api.post(`${base}/uploads/${id}/complete`),
   retry: (id) => api.post(`${base}/uploads/${id}/retry`),

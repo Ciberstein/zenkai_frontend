@@ -99,6 +99,7 @@ const UploadDialog = ({ episode, open, onClose, onDone, initialFiles = null }) =
 
     let created = null;
 
+    uploads.begin();
     setPhase('uploading');
     setError(null);
     setSent(0);
@@ -125,7 +126,7 @@ const UploadDialog = ({ episode, open, onClose, onDone, initialFiles = null }) =
       onDone();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message ?? err.message);
+      setError(err.cancelled ? null : (err.response?.data?.message ?? err.message));
       // Si se creo el trabajo pero la subida fallo, no se deja a medias en el servidor.
       if (created) uploads.remove(created.id).catch(() => {});
       setPhase('idle');
@@ -145,7 +146,7 @@ const UploadDialog = ({ episode, open, onClose, onDone, initialFiles = null }) =
       title={`Subir video · Episodio ${episode?.number}`}
       actions={
         <>
-          <Button color="ghost" size="sm" disabled={uploading} onClick={close}>Cancelar</Button>
+          <Button color="ghost" size="sm" onClick={uploading ? uploads.cancel : close}>{uploading ? 'Cancelar subida' : 'Cancelar'}</Button>
           <Button size="sm" disabled={!ready} loading={uploading} onClick={onSubmit}>
             Subir y publicar
           </Button>
