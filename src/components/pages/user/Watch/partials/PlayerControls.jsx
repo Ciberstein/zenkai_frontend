@@ -387,21 +387,43 @@ const PlayerControls = ({
     savePref('muted', node.muted);
   };
 
+  // Pantalla completa "girada": donde el navegador no deja bloquear la orientacion (iPhone, o si
+  // el bloqueo falla) se gira el marco con CSS cuando el telefono esta en vertical.
+  const stage = () => wrapper.current?.closest('[data-player-stage]');
+  const [turned, setTurned] = React.useState(false);
+
+  const setTurn = (on) => {
+    const el = stage();
+    if (el) el.toggleAttribute('data-rotated', on);
+    setTurned(on);
+  };
+
   const toggleFullscreen = () => {
-    // El marco de la página y no el propio reproductor: al pasar al siguiente episodio el
-    // reproductor se desmonta, y lo que estuviera a pantalla completa saldría de ella.
-    const el = wrapper.current?.closest('[data-player-stage]') ?? wrapper.current;
-    const node = video.current;
+    // El marco de la pagina y no el propio reproductor: al pasar al siguiente episodio el
+    // reproductor se desmonta, y lo que estuviera a pantalla completa saldria de ella.
+    const el = stage() ?? wrapper.current;
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+
+    if (turned) return setTurn(false);
 
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       Promise.resolve((document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document)).catch(() => {});
     } else if (el?.requestFullscreen) {
-      el.requestFullscreen().catch(() => {});
+      el.requestFullscreen()
+        .then(() => {
+          // Movil: horizontal automatico; si no se puede bloquear, se gira con CSS.
+          if (!touch) return;
+          const lock = window.screen?.orientation?.lock?.('landscape');
+          if (!lock) return setTurn(true);
+          return lock.catch(() => setTurn(true));
+        })
+        .catch(() => {});
+    } else if (touch) {
+      setTurn(true);
     } else if (el?.webkitRequestFullscreen) {
       el.webkitRequestFullscreen();
     } else {
-      // iPhone: solo deja poner a pantalla completa el propio <video>.
-      node?.webkitEnterFullscreen?.();
+      video.current?.webkitEnterFullscreen?.();
     }
   };
 
@@ -456,12 +478,11 @@ const PlayerControls = ({
       const on = Boolean(document.fullscreenElement ?? document.webkitFullscreenElement);
       setFs(on);
 
-      // En movil, a pantalla completa el video se gira solo a horizontal (como Netflix).
-      // Android Chrome lo permite; iPhone ya gira por su cuenta y no deja bloquear.
-      const orientation = window.screen?.orientation;
-      if (!orientation || !window.matchMedia('(pointer: coarse)').matches) return;
-      if (on) orientation.lock?.('landscape').catch(() => {});
-      else orientation.unlock?.();
+      if (!on) {
+        window.screen?.orientation?.unlock?.();
+        stage()?.removeAttribute('data-rotated');
+        setTurned(false);
+      }
     };
 
     document.addEventListener('fullscreenchange', onChange);
@@ -551,16 +572,19 @@ const PlayerControls = ({
 
   // ── Barra de progreso ──────────────────────────────────────────────────────
 
-  const fractionAt = (clientX) => {
-    const rect = track.current.getBoundingClientRect();
-    return clamp((clientX - rect.left) / rect.width, 0, 1);
+  // Fraccion (0..1) del gesto a lo largo de un elemento; con el marco girado 90 grados va por Y.
+  const alongOf = (event, rect) => {
+    const rotated = stage()?.hasAttribute('data-rotated') && window.matchMedia('(orientation: portrait)').matches;
+    return rotated ? (event.clientY - rect.top) / rect.height : (event.clientX - rect.left) / rect.width;
   };
+
+  const fractionAt = (event) => clamp(alongOf(event, track.current.getBoundingClientRect()), 0, 1);
 
   const onSeekDown = (event) => {
     if (!duration) return;
 
     event.currentTarget.setPointerCapture(event.pointerId);
-    const fraction = fractionAt(event.clientX);
+    const fraction = fractionAt(event);
 
     scrubbing.current = fraction;
     setScrub(fraction);
@@ -568,7 +592,7 @@ const PlayerControls = ({
   };
 
   const onSeekMove = (event) => {
-    const fraction = fractionAt(event.clientX);
+    const fraction = fractionAt(event);
     setHover(fraction);
 
     if (scrubbing.current !== null) {
@@ -598,7 +622,7 @@ const PlayerControls = ({
     const now = Date.now();
     const touch = pointerType.current !== 'mouse';
     const rect = event.currentTarget.getBoundingClientRect();
-    const zone = (event.clientX - rect.left) / rect.width;
+    const zone = alongOf(event, rect);
 
     // Segundo toque en menos de 300 ms.
     if (now - lastTap.current < 300) {
@@ -859,8 +883,8 @@ const PlayerControls = ({
               </IconButton>
             )}
 
-            <IconButton box="size-9 sm:size-12" label={fs ?'Salir de pantalla completa (f)' : 'Pantalla completa (f)'} onClick={toggleFullscreen}>
-              <Icon name={fs ? 'fullscreen-exit' : 'fullscreen'} className="size-5 sm:size-7" />
+            <IconButton box="size-9 sm:size-12" label={fs || turned ? 'Salir de pantalla completa (f)' : 'Pantalla completa (f)'} onClick={toggleFullscreen}>
+              <Icon name={fs || turned ? 'fullscreen-exit' : 'fullscreen'} className="size-5 sm:size-7" />
             </IconButton>
           </div>
 

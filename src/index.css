@@ -306,3 +306,18 @@
   @media (min-width: 640px) { padding-inline: 1.5rem; }
   @media (min-width: 1024px) { padding-inline: 2.5rem; }
 }
+
+/* Reproductor "girado": movil en vertical sin bloqueo de orientacion (iPhone). Gira el marco 90 grados. */
+@media (orientation: portrait) {
+  [data-player-stage][data-rotated] {
+    inset: auto !important;
+    top: 0 !important;
+    left: 100vw !important;
+    width: 100vh !important;
+    width: 100dvh !important;
+    height: 100vw !important;
+    height: 100dvw !important;
+    transform: rotate(90deg);
+    transform-origin: top left;
+  }
+}
