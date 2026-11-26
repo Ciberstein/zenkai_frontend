@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux'
 import Icon from '../../../../shared/Icon'
 import PlayerTopBar from './PlayerTopBar'
 import ShortcutsGuide from './ShortcutsGuide'
+import { isIOS, isStandalone } from '../../../../../utils/install'
 import { captionCss, formatTime, readCaptionStyle, readPrefs, savePref, sourceLabel } from '../../../../../utils/player.util'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -418,6 +419,14 @@ const PlayerControls = ({
           return lock.catch(() => setTurn(true));
         })
         .catch(() => {});
+    } else if (touch && isIOS() && !isStandalone() && video.current?.webkitEnterFullscreen) {
+      // iPhone en el navegador: Apple solo deja pantalla completa real con el reproductor nativo
+      // (sin barras y gira solo). Como el subtitulo propio es HTML, se pasa a la pista nativa.
+      const node = video.current;
+      const shown = [...node.textTracks].filter((t) => t.id.startsWith('zk-') && t.mode === 'hidden');
+      shown.forEach((t) => { t.mode = 'showing'; });
+      node.addEventListener('webkitendfullscreen', () => shown.forEach((t) => { t.mode = 'hidden'; }), { once: true });
+      node.webkitEnterFullscreen();
     } else if (touch) {
       setTurn(true);
     } else if (el?.webkitRequestFullscreen) {
