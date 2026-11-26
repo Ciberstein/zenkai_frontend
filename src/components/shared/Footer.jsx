@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import Brand from './Brand'
+import * as app from '../../utils/install.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,35 @@ const LANGUAGES = [
   { code: 'ja', label: '日本語' },
 ];
 
+// ─── Instalar app ─────────────────────────────────────────────────────────────
+
+const InstallApp = () => {
+  const [, refresh] = useState(0);
+  const [help, setHelp] = useState(false);
+  useEffect(() => app.subscribe(() => refresh((n) => n + 1)), []);
+
+  if (app.isStandalone()) return null;
+  const ios = app.isIOS();
+  if (!ios && !app.canInstall()) return null;
+
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <button
+        type="button"
+        onClick={() => (ios ? setHelp((v) => !v) : app.install())}
+        className="cursor-pointer border border-accent-text/60 px-3 py-1.5 font-mono text-xs tracking-[0.12em] text-accent-text transition-colors hover:bg-accent-text/10"
+      >
+        Instalar app
+      </button>
+      {ios && help && (
+        <p className="max-w-[16rem] text-xs leading-relaxed text-muted">
+          En Safari toca Compartir y luego «Añadir a pantalla de inicio».
+        </p>
+      )}
+    </div>
+  );
+};
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 const User = () => {
@@ -56,6 +86,7 @@ const User = () => {
           <p className="text-sm leading-relaxed text-muted">
             Descubre, sigue y retoma tus series donde las dejaste.
           </p>
+          <InstallApp />
         </div>
 
         {GROUPS.map((group) => (

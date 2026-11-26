@@ -452,12 +452,23 @@ const PlayerControls = ({
   };
 
   React.useEffect(() => {
-    const onChange = () => setFs(Boolean(document.fullscreenElement ?? document.webkitFullscreenElement));
+    const onChange = () => {
+      const on = Boolean(document.fullscreenElement ?? document.webkitFullscreenElement);
+      setFs(on);
+
+      // En movil, a pantalla completa el video se gira solo a horizontal (como Netflix).
+      // Android Chrome lo permite; iPhone ya gira por su cuenta y no deja bloquear.
+      const orientation = window.screen?.orientation;
+      if (!orientation || !window.matchMedia('(pointer: coarse)').matches) return;
+      if (on) orientation.lock?.('landscape').catch(() => {});
+      else orientation.unlock?.();
+    };
 
     document.addEventListener('fullscreenchange', onChange);
     document.addEventListener('webkitfullscreenchange', onChange);
 
     return () => {
+      window.screen?.orientation?.unlock?.();
       document.removeEventListener('fullscreenchange', onChange);
       document.removeEventListener('webkitfullscreenchange', onChange);
     };

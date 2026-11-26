@@ -59,7 +59,14 @@ export const CatalogPage = () => {
             <tbody>
               {anime.data.map((row) => (
                 <tr key={row.id} className="border-b border-line/50 transition-colors last:border-0 hover:bg-surface/50">
-                  <td className="px-3 py-2 font-bold">{row.title}</td>
+                  <td className="px-3 py-2 font-bold">
+                    <span className={Number(row.loadedEpisodes) > 0 ? "border-l-2 border-accent-text pl-2" : "pl-2.5"}>{row.title}</span>
+                    {Number(row.loadedEpisodes) > 0 && (
+                      <span className="ml-2 whitespace-nowrap border border-accent-text/60 px-1.5 py-0.5 align-middle font-mono text-[10px] font-normal tracking-widest text-accent-text">
+                        {row.loadedEpisodes} CAP
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted">{row.malId}</td>
                   <td className="px-4 py-3 text-muted">{row.type}</td>
                   <td className="px-4 py-3">
