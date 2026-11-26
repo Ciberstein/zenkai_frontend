@@ -410,6 +410,15 @@ const PlayerControls = ({
 
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       Promise.resolve((document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document)).catch(() => {});
+    } else if (touch && isIOS() && !isStandalone() && video.current?.webkitEnterFullscreen) {
+      // iPhone en el navegador (se prueba antes que la API estandar: algunos iOS la exponen pero
+      // dejan las barras): Apple solo deja pantalla completa real con el reproductor nativo
+      // (sin barras y gira solo, con sus controles). Como el subtitulo propio es HTML, se pasa a la pista nativa.
+      const node = video.current;
+      const shown = [...node.textTracks].filter((t) => t.id.startsWith('zk-') && t.mode === 'hidden');
+      shown.forEach((t) => { t.mode = 'showing'; });
+      node.addEventListener('webkitendfullscreen', () => shown.forEach((t) => { t.mode = 'hidden'; }), { once: true });
+      node.webkitEnterFullscreen();
     } else if (el?.requestFullscreen) {
       el.requestFullscreen()
         .then(() => {
@@ -420,14 +429,6 @@ const PlayerControls = ({
           return lock.catch(() => setTurn(true));
         })
         .catch(() => {});
-    } else if (touch && isIOS() && !isStandalone() && video.current?.webkitEnterFullscreen) {
-      // iPhone en el navegador: Apple solo deja pantalla completa real con el reproductor nativo
-      // (sin barras y gira solo). Como el subtitulo propio es HTML, se pasa a la pista nativa.
-      const node = video.current;
-      const shown = [...node.textTracks].filter((t) => t.id.startsWith('zk-') && t.mode === 'hidden');
-      shown.forEach((t) => { t.mode = 'showing'; });
-      node.addEventListener('webkitendfullscreen', () => shown.forEach((t) => { t.mode = 'hidden'; }), { once: true });
-      node.webkitEnterFullscreen();
     } else if (touch) {
       setTurn(true);
     } else if (el?.webkitRequestFullscreen) {
