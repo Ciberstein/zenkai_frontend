@@ -65,6 +65,7 @@ function App() {
           <Route path="/favorites" element={<User.Pages.Favorites />} />
           <Route path="/history" element={<User.Pages.History />} />
           <Route path="/settings" element={<User.Pages.Settings />} />
+          <Route path="/tv" element={<User.Pages.Link />} />
         </Route>
 
         {/* Admin routes */}

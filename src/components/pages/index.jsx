@@ -16,6 +16,7 @@ import { FavoritesPage as UserFavorites } from "./user/Favorites/FavoritesPage";
 import { HistoryPage as UserHistory } from "./user/History/HistoryPage";
 import { ProfilePage as UserProfile } from "./user/Profile/ProfilePage";
 import { SettingsPage as UserSettings } from "./user/Settings/SettingsPage";
+import { LinkPage as UserLink } from "./user/Link/LinkPage";
 
 // Admin Routes
 import { HomePage as AdminHome } from "./admin/Home/HomePage";
@@ -49,6 +50,7 @@ export const User = {
     History: UserHistory,
     Profile: UserProfile,
     Settings: UserSettings,
+    Link: UserLink,
   }
 };
 

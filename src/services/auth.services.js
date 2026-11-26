@@ -47,6 +47,13 @@ const recover = async (email) => await api.post('/api/v1/auth/recovery', { email
 
 const reset = async (data) => await api.post('/api/v1/auth/recovery/reset', data);
 
-const auth = { disconnect, refresh, validate, login, register, verify, resend, recover, reset };
+// Vincular una TV: la TV pide un codigo y lo consulta; el celular (con sesion) lo autoriza.
+const tvCode = async () => await api.post('/api/v1/auth/tv/code');
+
+const tvPoll = async (secret) => await api.post('/api/v1/auth/tv/poll', { secret });
+
+const tvApprove = async (code) => await api.post('/api/v1/auth/tv/approve', { code });
+
+const auth = { tvCode, tvPoll, tvApprove, disconnect, refresh, validate, login, register, verify, resend, recover, reset };
 
 export default auth;

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Context } from '../context';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { rememberReturn } from '../utils/returnTo';
 import Layouts from '../components/layouts';
 
 // Las rutas de usuario no exigen sesion: un invitado navega el catalogo
@@ -22,9 +23,15 @@ const User = () => {
 const Private = () => {
 
   const { auth, loading } = React.useContext(Context.Auth);
+  const { pathname, search } = useLocation();
 
   if (loading) return null;
-  if (!auth) return <Navigate to="/login" replace />;
+
+  // Al iniciar sesion se vuelve a donde se iba (p. ej. al codigo de una TV, que llega por QR).
+  if (!auth) {
+    rememberReturn(pathname + search);
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <Layouts.User auth={auth}>

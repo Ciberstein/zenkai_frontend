@@ -30,6 +30,11 @@ tizen install -n Zenkai.wgt -t <nombre-de-la-tv>
 Abre el sitio con `?tv=1` en el navegador del PC (queda activado; `?tv=0` lo apaga): se maneja
 con las flechas y Enter. Teclas del control: ⏪ ⏩ ▶ ⏸ ⏯ y Atrás (volver / salir).
 
+## Iniciar sesión en la TV
+Sin teclado: la TV muestra un **QR y un código** (se renuevan solos cada 5 minutos). Se escanea con
+el celular, que abre `/tv?code=…`, pide iniciar sesión si hace falta y se pulsa **Autorizar**; la
+TV entra sola. También se puede entrar a `/tv` y escribir el código. «Usar correo y contraseña»
+queda como alternativa.
+
 ## Para publicar en la tienda de Samsung
-Hay que pasar su revisión (Seller Office). Samsung pide que la app funcione sin necesidad de
-teclado: queda pendiente iniciar sesión con un código/QR desde el celular.
+Hay que pasar su revisión (Seller Office).
