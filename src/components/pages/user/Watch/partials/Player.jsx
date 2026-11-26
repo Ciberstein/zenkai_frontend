@@ -8,6 +8,8 @@ import PlayerControls, { IconButton, Section } from './PlayerControls'
 import PlayerTopBar from './PlayerTopBar'
 import PartyPanel from './PartyPanel'
 import usePartySync from './usePartySync'
+import useCast from './useCast'
+import CastPanel from './CastPanel'
 
 const REPORT_EVERY_MS = 15000;
 
@@ -130,6 +132,12 @@ const Player = ({
   const mediaKey = source ? `${source.url}-${cors}` : null;
   const sync = usePartySync(party, video, mediaKey);
 
+  // Transmitir a la TV (AirPlay o Google Cast).
+  const cast = useCast({
+    video, mediaKey, source, isHls, subtitles, caption, cors,
+    title: seriesTitle, subtitle: episodeLabel, image: episode?.thumbnail ?? null,
+  });
+
   const toggleParty = async () => {
     if (party.active) return setPanel((open) => !open);
 
@@ -141,14 +149,24 @@ const Player = ({
   // terminar, antes de saltar al siguiente). Sin sesion no se reporta nada.
   const report = React.useCallback(() => {
     const node = video.current;
-    if (!auth || !node || !node.duration || node.currentTime < MIN_WATCHED_SECONDS) return null;
+    // Mientras suena en la TV (Google Cast) el video local esta quieto: manda la posicion remota.
+    const time = cast.timeRef.current ?? node?.currentTime;
+    if (!auth || !node || !node.duration || time < MIN_WATCHED_SECONDS) return null;
 
     return player_service.progress({
       episodeId: episode.id,
-      progress: node.currentTime,
+      progress: time,
       duration: node.duration,
     });
-  }, [auth, episode?.id]);
+  }, [auth, episode?.id, cast.timeRef]);
+
+  // Sin timeupdate local, la posicion remota se reporta por reloj.
+  React.useEffect(() => {
+    if (!cast.remoteControl) return;
+
+    const timer = setInterval(report, REPORT_EVERY_MS);
+    return () => clearInterval(timer);
+  }, [cast.remoteControl, report]);
 
   // Se reporta cada 15s de reproduccion, al pausar y al desmontar, para no
   // castigar al backend con un POST por segundo.
@@ -385,7 +403,7 @@ const Player = ({
         crossOrigin={subtitles.length && cors ? 'anonymous' : undefined}
         onError={() => { if (!isHls && subtitles.length && cors) setCors(false); }}
         src={isHls ? undefined : source.url}
-        autoPlay={!party?.active}
+        autoPlay={!party?.active && !cast.casting}
         playsInline
         onLoadedMetadata={onLoadedMetadata}
         onTimeUpdate={onTimeUpdate}
@@ -445,16 +463,42 @@ const Player = ({
           sources={sources}
           source={source}
           onSource={onSource}
-          topActions={party && onStartParty && (
-            <IconButton
-              label={party.active ? 'Sala para ver juntos' : 'Ver juntos'}
-              active={party.active && panel}
-              aria-expanded={party.active ? panel : undefined}
-              onClick={toggleParty}
-            >
-              <Icon name="users" className="size-6" />
-            </IconButton>
+          topActions={((party && onStartParty) || cast.available) && (
+            <>
+              {cast.available && (
+                <IconButton
+                  label={cast.casting ? 'Transmitiendo a la TV' : 'Transmitir a la TV'}
+                  active={cast.casting}
+                  onClick={cast.request}
+                >
+                  <Icon name="cast" className="size-6" />
+                </IconButton>
+              )}
+
+              {party && onStartParty && (
+                <IconButton
+                  label={party.active ? 'Sala para ver juntos' : 'Ver juntos'}
+                  active={party.active && panel}
+                  aria-expanded={party.active ? panel : undefined}
+                  onClick={toggleParty}
+                >
+                  <Icon name="users" className="size-6" />
+                </IconButton>
+              )}
+            </>
           )}
+        />
+      )}
+
+      {cast.remoteControl && !failed && (
+        <CastPanel
+          cast={cast}
+          seriesTitle={seriesTitle}
+          episodeLabel={episodeLabel}
+          image={episode?.thumbnail ?? null}
+          onClose={onClose}
+          onPrev={onPrev}
+          onNext={onNext}
         />
       )}
 
