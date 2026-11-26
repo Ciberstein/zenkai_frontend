@@ -6,6 +6,8 @@ import { audioLabel, matchLanguage, readPrefs, savePref, sourceLabel, subtitleNa
 import Icon from '../../../../shared/Icon'
 import PlayerControls, { IconButton, Section } from './PlayerControls'
 import PlayerTopBar from './PlayerTopBar'
+import PartyPanel from './PartyPanel'
+import usePartySync from './usePartySync'
 
 const REPORT_EVERY_MS = 15000;
 
@@ -54,6 +56,32 @@ const EmbedBar = ({ seriesTitle, episodeLabel, onClose, onPrev, onNext, sources,
   )
 }
 
+// ─── PartyToast ───────────────────────────────────────────────────────────────
+
+// Aviso breve de lo que acaba de hacer otro miembro de la sala ("Ana pausó").
+const PartyToast = ({ activity }) => {
+
+  const [text, setText] = React.useState(null);
+  const first = React.useRef(activity?.id);   // el aviso que ya estaba al montar no se repite
+
+  React.useEffect(() => {
+    if (!activity || activity.id === first.current) return;
+
+    setText(activity.text);
+    const timer = setTimeout(() => setText(null), 2500);
+
+    return () => clearTimeout(timer);
+  }, [activity]);
+
+  if (!text) return null;
+
+  return (
+    <div role="status" className="pointer-events-none absolute left-1/2 top-24 z-30 -translate-x-1/2 bg-black/80 px-3 py-1.5 text-sm text-white">
+      {text}
+    </div>
+  )
+}
+
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 // Reproductor sobre la fuente elegida:
@@ -70,6 +98,7 @@ const Player = ({
   seriesTitle = null, episodeLabel = null, onClose = null,
   onPrev = null, onNext = null,
   sources = [], onSource = () => {},
+  party = null, onStartParty = null, onLeaveParty = null, partyLink = null,
 }) => {
 
   const wrapper = React.useRef(null);
@@ -95,6 +124,18 @@ const Player = ({
 
   const subtitles = React.useMemo(() => episode?.subtitles ?? [], [episode]);
   const isHls = source?.type === 'hls';
+
+  // Ver juntos: el panel de la sala (abierto al entrar por un enlace) y la sincronizacion del video.
+  const [panel, setPanel] = React.useState(Boolean(party?.active));
+  const mediaKey = source ? `${source.url}-${cors}` : null;
+  const sync = usePartySync(party, video, mediaKey);
+
+  const toggleParty = async () => {
+    if (party.active) return setPanel((open) => !open);
+
+    const res = await onStartParty?.();
+    if (res?.ok) setPanel(true);
+  };
 
   // Devuelve la promesa para poder esperar a que el servidor lo guarde (al
   // terminar, antes de saltar al siguiente). Sin sesion no se reporta nada.
@@ -124,6 +165,10 @@ const Player = ({
   // episodio terminado debe empezar desde el principio, no en los creditos.
   const onLoadedMetadata = () => {
     const saved = episode?.history;
+
+    // En una sala manda la posicion compartida, no donde se quedo este usuario.
+    if (party?.active) return;
+
     if (!video.current || !saved || saved.completed || saved.progress < MIN_WATCHED_SECONDS) return;
 
     video.current.currentTime = saved.progress;
@@ -330,8 +375,6 @@ const Player = ({
     )
   }
 
-  const mediaKey = `${source.url}-${cors}`;
-
   return (
     <div ref={wrapper} tabIndex={0} className="zk-player relative size-full bg-black outline-none">
       <video
@@ -342,7 +385,7 @@ const Player = ({
         crossOrigin={subtitles.length && cors ? 'anonymous' : undefined}
         onError={() => { if (!isHls && subtitles.length && cors) setCors(false); }}
         src={isHls ? undefined : source.url}
-        autoPlay
+        autoPlay={!party?.active}
         playsInline
         onLoadedMetadata={onLoadedMetadata}
         onTimeUpdate={onTimeUpdate}
@@ -402,7 +445,46 @@ const Player = ({
           sources={sources}
           source={source}
           onSource={onSource}
+          topActions={party && onStartParty && (
+            <IconButton
+              label={party.active ? 'Sala para ver juntos' : 'Ver juntos'}
+              active={party.active && panel}
+              aria-expanded={party.active ? panel : undefined}
+              onClick={toggleParty}
+            >
+              <Icon name="users" className="size-6" />
+            </IconButton>
+          )}
         />
+      )}
+
+      {party?.active && panel && !failed && (
+        <PartyPanel party={party} link={partyLink} onClose={() => setPanel(false)} onLeave={onLeaveParty} />
+      )}
+
+      {party?.active && <PartyToast activity={party.activity} />}
+
+      {sync.blocked && (
+        <button
+          type="button"
+          onClick={sync.resume}
+          className="absolute inset-0 z-40 grid cursor-pointer place-items-center bg-black/70 px-6 text-center text-white"
+        >
+          <span className="flex flex-col items-center gap-3">
+            <span className="grid size-16 place-items-center bg-accent text-accent-fg"><Icon name="play" className="ml-0.5 size-7" /></span>
+            <span className="font-display text-xl font-bold">Toca para unirte a la reproducción</span>
+            <span className="text-sm text-white/65">Tu navegador necesita un toque para empezar con sonido.</span>
+          </span>
+        </button>
+      )}
+
+      {party?.status === 'error' && (
+        <div className="absolute inset-0 z-40 grid place-items-center bg-black/80 px-6 text-center text-white">
+          <div className="flex max-w-sm flex-col items-center gap-4">
+            <p className="font-display text-xl font-bold">{party.error}</p>
+            <button type="button" onClick={onLeaveParty} className="cursor-pointer bg-accent px-4 py-2 text-sm font-semibold text-accent-fg">Ver sin sala</button>
+          </div>
+        </div>
       )}
     </div>
   )

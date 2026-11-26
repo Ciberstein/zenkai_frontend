@@ -91,6 +91,7 @@ const PlayerControls = ({
   onPrev, onNext,
   segments = [],
   sources = [], source = null, onSource = () => {},
+  topActions = null,
 }) => {
 
   const [playing, setPlaying] = React.useState(false);
@@ -673,7 +674,7 @@ const PlayerControls = ({
       )}
 
       {/* Cabecera: volver a la serie */}
-      <PlayerTopBar seriesTitle={seriesTitle} episodeLabel={episodeLabel} onClose={onClose} visible={visible} />
+      <PlayerTopBar seriesTitle={seriesTitle} episodeLabel={episodeLabel} onClose={onClose} visible={visible}>{topActions}</PlayerTopBar>
 
       {/* Saltar intro / resumen / creditos: solo mientras dura el tramo */}
       {active && (

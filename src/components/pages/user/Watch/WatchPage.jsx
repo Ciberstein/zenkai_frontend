@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { Context } from '../../../../context'
@@ -9,6 +9,7 @@ import { episodesThunk, episodeThunk } from '../../../../store/slices/episodes.s
 import LoginGate from './partials/LoginGate'
 import Player from './partials/Player'
 import PlayerTopBar from './partials/PlayerTopBar'
+import useWatchParty from './partials/useWatchParty'
 
 // Un marco que tapa toda la pantalla, por encima incluso de las lineas CRT del tema
 // oscuro (z 9998): aqui manda el video. Sin barra superior ni lista de episodios;
@@ -34,6 +35,19 @@ export const WatchPage = () => {
   const [episode, setEpisode] = React.useState(null);
   const [source, setSource] = React.useState(null);
 
+  // Ver juntos: ?party=CODIGO mete esta pagina en una sala. El codigo se conserva al cambiar de episodio.
+  const [search, setSearch] = useSearchParams();
+  const code = auth ? search.get('party') : null;
+  const suffix = code ? `?party=${code}` : '';
+
+  const party = useWatchParty({
+    code,
+    malId,
+    number,
+    // El anfitrion cambio de episodio (o el enlace era de uno anterior): se le sigue.
+    onEpisode: (data) => navigate(`/watch/${data.malId}/${data.number}${suffix}`, { replace: true }),
+  });
+
   React.useEffect(() => {
     if (anime?.mal_id !== Number(malId)) dispatch(animeThunk(malId));
     dispatch(episodesThunk(malId));
@@ -54,7 +68,16 @@ export const WatchPage = () => {
   const previous = index > 0 ? episodes[index - 1] : null;
   const next = index >= 0 && index < episodes.length - 1 ? episodes[index + 1] : null;
 
-  const goTo = (item) => () => navigate(`/watch/${malId}/${item.number}`);
+  // En una sala solo el anfitrion cambia de episodio (los demas lo siguen).
+  const inRoom = party.active && party.status !== 'error';
+  const canChange = !inRoom || party.isHost;
+
+  const go = (item) => {
+    if (inRoom) party.changeEpisode(Number(malId), item.number);
+    navigate(`/watch/${malId}/${item.number}${suffix}`);
+  };
+
+  const goTo = (item) => (canChange ? () => go(item) : null);
   const close = () => navigate(`/anime/${malId}`);
 
   // El titulo de la serie solo cuando ya es la de esta pagina: el store puede tener
@@ -65,8 +88,16 @@ export const WatchPage = () => {
   // para que el episodio salga como visto, haya o no siguiente.
   const onEnded = async () => {
     if (auth) await dispatch(episodesThunk(malId));
-    if (config?.['player_auto_next'] && next) navigate(`/watch/${malId}/${next.number}`);
+    if (config?.['player_auto_next'] && next && canChange) go(next);
   };
+
+  const startParty = async () => {
+    const res = await party.create();
+    if (res?.ok) setSearch({ party: res.room.code }, { replace: true });
+    return res;
+  };
+
+  const leaveParty = () => setSearch({}, { replace: true });
 
   // La web es pública pero el reproductor no: sin sesión (o si el servidor marca el episodio como
   // bloqueado) se invita a entrar, con la miniatura del episodio de fondo.
@@ -114,6 +145,10 @@ export const WatchPage = () => {
         onNext={next ? goTo(next) : null}
         sources={episode.sources ?? []}
         onSource={setSource}
+        party={party}
+        onStartParty={startParty}
+        onLeaveParty={leaveParty}
+        partyLink={`${window.location.origin}/watch/${malId}/${number}${suffix}`}
       />
     </Stage>
   )
