@@ -162,6 +162,18 @@ const useCast = ({ video, mediaKey, source, isHls, subtitles, caption, cors, tit
       const sync = () => {
         if (remotePlayer.isConnected) timeRef.current = remotePlayer.currentTime;
 
+        // La TV acepto la orden pero no pudo reproducir (lo tipico: el almacenamiento no manda CORS
+        // al receptor de Chromecast, que pide el video desde www.gstatic.com). Sin esto el panel
+        // se quedaria esperando para siempre.
+        const reason = context.getCurrentSession()?.getMediaSession()?.idleReason;
+
+        if (remotePlayer.playerState === 'IDLE' && reason === 'ERROR') {
+          console.warn('[cast] el receptor no pudo reproducir', live.current.source?.url);
+          setError('La TV no pudo reproducir este video. Prueba con otro servidor o vuelve a transmitir.');
+        } else if (remotePlayer.playerState && remotePlayer.playerState !== 'IDLE') {
+          setError(null);
+        }
+
         setRemote({
           paused: remotePlayer.isPaused,
           time: remotePlayer.currentTime,
