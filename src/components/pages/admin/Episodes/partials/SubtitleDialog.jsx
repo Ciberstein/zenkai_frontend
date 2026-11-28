@@ -21,6 +21,15 @@ const ext = (name) => (name.toLowerCase().match(/\.[a-z0-9]+$/) ?? [''])[0];
 const guessLang = (name) =>
   name.match(/\.([a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?)\.[a-z0-9]+$/i)?.[1]?.toLowerCase() ?? null;
 
+// Variantes de uso corriente, para no tener que recordar el código.
+const QUICK = [
+  { code: 'es', label: 'Español (España)' },
+  { code: 'es-419', label: 'Español (Latinoamérica)' },
+  { code: 'en', label: 'Inglés' },
+  { code: 'ja', label: 'Japonés' },
+  { code: 'pt-br', label: 'Portugués (Brasil)' },
+];
+
 const kilobytes = (bytes) => (bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`);
 
 // ─── SubtitleDialog ───────────────────────────────────────────────────────────
@@ -176,11 +185,28 @@ const SubtitleDialog = ({ episode, open, onClose, onSaved }) => {
         <Input full name="url" label="URL del archivo .vtt" value={url} onChange={(event) => setUrl(event.target.value)} disabled={saving} />
       )}
 
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Idiomas habituales">
+        {QUICK.map((item) => (
+          <button
+            key={item.code}
+            type="button"
+            disabled={saving}
+            onClick={() => { setLabelTouched(false); changeLanguage(item.code); }}
+            className={clsx(
+              'cursor-pointer border px-3 py-1.5 font-mono text-[11px] tracking-[0.06em] transition-colors',
+              language === item.code ? 'border-accent bg-accent text-accent-fg' : 'border-line text-muted hover:bg-surface-2 hover:text-fg',
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input
           full
           name="language"
-          label="Código de idioma (es, en, es-419…)"
+          label="Código de idioma (es, es-419, en, pt-br…)"
           value={language}
           onChange={(event) => changeLanguage(event.target.value.trim().toLowerCase())}
           disabled={saving}
@@ -202,7 +228,7 @@ const SubtitleDialog = ({ episode, open, onClose, onSaved }) => {
 
       <p className="text-xs text-muted">
         {mode === 'file'
-          ? 'Los .ass, .ssa y .srt se convierten a WebVTT al guardarlos; del .ass se conserva el texto y el tiempo, no el estilo (colores, posición, karaoke). Subir otro del mismo idioma reemplaza el anterior.'
+          ? 'Los .ass, .ssa y .srt se convierten a WebVTT al guardarlos; del .ass se conserva el texto y el tiempo, no el estilo (colores, posición, karaoke). Cada variante (es, es-419…) es una pista distinta; subir otra con el mismo código reemplaza la anterior.'
           : 'El servidor que aloje el archivo debe enviar la cabecera CORS (Access-Control-Allow-Origin); si no, el navegador no lo cargará.'}
       </p>
     </Dialog>

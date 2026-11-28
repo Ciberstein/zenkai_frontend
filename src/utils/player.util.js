@@ -126,12 +126,6 @@ export const audioLabel = (track, fallback) =>
   || track.name
   || fallback;
 
-// Cómo se etiqueta una pista de subtítulos: el idioma sin región. "Español" ya cubre es, es-419, es-ES
-// o lat; las variantes solo se distinguen en los audios, donde un doblaje de cada región sí es distinto.
-const SUBTITLE_BASE = { lat: 'es' };
-
-export const subtitleName = (code, fallback) => {
-  const lower = String(code).toLowerCase();
-
-  return intlName(SUBTITLE_BASE[lower] ?? lower.split('-')[0], fallback);
-};
+// Cómo se etiqueta una pista de subtítulos: igual que un audio, con la variante ("Español (España)",
+// "Español (Latinoamérica)"), porque cada región tiene su propia traducción.
+export const subtitleName = (code, fallback) => languageName(code, fallback);
