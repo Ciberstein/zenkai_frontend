@@ -30,26 +30,11 @@ export const synopsis = (anime) =>
     .replace(/\(Source:[^)]*\)/gi, '')
     .trim() || null;
 
-// Tipo de produccion segun MyAnimeList, en el idioma de la interfaz. Lo que no se conoce se
-// muestra tal cual, y "unknown" no se muestra.
-export const TYPE_LABEL = {
-  TV: 'Serie',
-  Movie: 'Película',
-  OVA: 'OVA',
-  ONA: 'ONA',
-  Special: 'Especial',
-  'TV Special': 'Especial TV',
-  Music: 'Musical',
-  cm: 'Comercial',
-  pv: 'Avance',
-  CM: 'Comercial',
-  PV: 'Avance',
-};
-
+// Tipo de produccion tal cual viene de MyAnimeList (TV, Movie, OVA...), sin traducir.
+// "unknown" no dice nada, asi que no se muestra.
 export const typeLabel = (anime) => {
   const type = anime?.type;
-  if (!type || type.toLowerCase() === 'unknown') return null;
-  return TYPE_LABEL[type] ?? type;
+  return !type || type.toLowerCase() === 'unknown' ? null : type;
 };
 
 export const STATUS_LABEL = {

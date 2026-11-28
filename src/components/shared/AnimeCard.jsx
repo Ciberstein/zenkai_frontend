@@ -54,7 +54,7 @@ const AnimeCard = ({ anime, progress = null, rank = null, lang = 'es', className
 
         {kind && (
           <span className={clsx(
-            'absolute left-2 bg-accent px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent-fg',
+            'cut-xs absolute left-2 bg-accent px-2 py-1 font-mono text-[11px] font-bold tracking-wider text-accent-fg',
             rank !== null ? 'top-8' : 'top-2',
           )}>
             {kind}
