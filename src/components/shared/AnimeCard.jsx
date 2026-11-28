@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Icon from './Icon'
-import { episodes, image, malId, score, title, year } from '../../utils/anime.util'
+import { episodes, image, malId, score, title, typeLabel, year } from '../../utils/anime.util'
 import percent from '../../utils/progress.util'
 import clsx from 'clsx'
 
@@ -25,6 +25,7 @@ const AnimeCard = ({ anime, progress = null, rank = null, lang = 'es', className
   const played = progress ? percent(progress.progress, progress.duration) : 0;
   const airing = anime?.status === 'Currently Airing';
   const name = title(anime, lang);
+  const kind = typeLabel(anime);
 
   return (
     <Link
@@ -51,8 +52,17 @@ const AnimeCard = ({ anime, progress = null, rank = null, lang = 'es', className
           </span>
         )}
 
+        {kind && (
+          <span className={clsx(
+            'absolute left-2 bg-accent px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent-fg',
+            rank !== null ? 'top-8' : 'top-2',
+          )}>
+            {kind}
+          </span>
+        )}
+
         {rating && (
-          <span className="cut-xs absolute right-0 top-0 inline-flex items-center gap-1 bg-black/70 px-2 py-1 font-mono text-[11px] font-bold text-data backdrop-blur-md tnum">
+          <span className="cut-xs absolute right-2 top-2 inline-flex items-center gap-1 bg-black/70 px-2 py-1 font-mono text-[11px] font-bold text-data backdrop-blur-md tnum">
             <Icon name="star" className="size-3" />
             {rating}
           </span>
@@ -106,7 +116,7 @@ const AnimeCard = ({ anime, progress = null, rank = null, lang = 'es', className
           {name}
         </h3>
         <p className="font-mono text-[11px] uppercase tracking-wider text-muted">
-          {[anime?.type, year(anime)].filter(Boolean).join(' · ') || t('Loading')}
+          {[year(anime)].filter(Boolean).join(' · ') || t('Loading')}
         </p>
       </div>
     </Link>

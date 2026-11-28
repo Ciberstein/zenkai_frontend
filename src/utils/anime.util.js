@@ -30,6 +30,28 @@ export const synopsis = (anime) =>
     .replace(/\(Source:[^)]*\)/gi, '')
     .trim() || null;
 
+// Tipo de produccion segun MyAnimeList, en el idioma de la interfaz. Lo que no se conoce se
+// muestra tal cual, y "unknown" no se muestra.
+export const TYPE_LABEL = {
+  TV: 'Serie',
+  Movie: 'Película',
+  OVA: 'OVA',
+  ONA: 'ONA',
+  Special: 'Especial',
+  'TV Special': 'Especial TV',
+  Music: 'Musical',
+  cm: 'Comercial',
+  pv: 'Avance',
+  CM: 'Comercial',
+  PV: 'Avance',
+};
+
+export const typeLabel = (anime) => {
+  const type = anime?.type;
+  if (!type || type.toLowerCase() === 'unknown') return null;
+  return TYPE_LABEL[type] ?? type;
+};
+
 export const STATUS_LABEL = {
   'Currently Airing': 'En emisión',
   'Finished Airing': 'Finalizado',

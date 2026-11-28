@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../../../../material'
 import Icon from '../../../../shared/Icon'
-import { genreLink, image, STATUS_LABEL, synopsis, title } from '../../../../../utils/anime.util'
+import { genreLink, image, STATUS_LABEL, synopsis, title, typeLabel } from '../../../../../utils/anime.util'
 import clsx from 'clsx'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ const AnimeHeader = ({ anime, auth, tracked, favorited, firstEpisode, onTrack, o
         <div className="flex min-w-0 animate-fade-up flex-col gap-6" style={{ animationDelay: '80ms' }}>
           <div className="flex flex-col gap-3">
             <p className="eyebrow flex-wrap gap-y-1">
-              {[anime.type, season].filter(Boolean).join(' · ')}
+              {[typeLabel(anime), season].filter(Boolean).join(' · ')}
               {anime.status === 'Currently Airing' && (
                 <span className="inline-flex items-center gap-1.5 text-fg/80">
                   <span className="size-1.5 animate-pulse rounded-full bg-accent" />
